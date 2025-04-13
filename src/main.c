@@ -6,6 +6,7 @@
 
 #define GRAVITY 1
 #define PLAYER_SPEED 1
+#define TILES_NUM 600
 
 #define GAME_SCALE 3
 
@@ -21,6 +22,7 @@ typedef struct {
     Rectangle right_collision_rect; // Left Collision Detection
     Rectangle left_collision_rect; // Right Collision Detection
     Rectangle down_collision_rect; // Bottom Collision Detection
+    Rectangle top_collision_rect; // Bottom Collision Detection
     Texture2D *inverted_img;
     bool inverted;
 } m_ent;
@@ -83,7 +85,7 @@ void create_world(ent *tiles, Texture2D *map_tile_texture)
     int x = 0;
     int y = 5;
     int spacing = 16;
-    for(int i = 0 ; i < 1023 ; i++)
+    for(int i = 0 ; i < TILES_NUM ; i++)
     {
         x++;
         tiles[i].img = map_tile_texture;
@@ -111,7 +113,7 @@ void draw_ent(Texture2D *texture, Rectangle *rect)
 
 void draw_world(ent *tiles)
 {
-    for (int i = 0 ; i < 1023 ; i++) 
+    for (int i = 0 ; i < TILES_NUM ; i++) 
     {
         draw_ent(tiles[i].img, &tiles[i].rect);
     }
@@ -140,8 +142,9 @@ void apply_m_ent_collision(m_ent *e, ent *tiles)
     bool colliding_with_floor = false;
     bool colliding_with_left = false;
     bool colliding_with_right = false;
+    bool colliding_with_top = false;
 
-     for (int i = 0 ; i < 1023 ; i++) {
+     for (int i = 0 ; i < TILES_NUM ; i++) {
         if (!colliding_with_floor) {
             colliding_with_floor = CheckCollisionRecs(e->down_collision_rect, tiles[i].rect);
         }
@@ -151,11 +154,15 @@ void apply_m_ent_collision(m_ent *e, ent *tiles)
         if (!colliding_with_right) {
             colliding_with_right = CheckCollisionRecs(e->right_collision_rect, tiles[i].rect);
         }
+        if (!colliding_with_top) {
+            colliding_with_top = CheckCollisionRecs(e->top_collision_rect, tiles[i].rect);
+        }
     }
 
     apply_gravity(e, colliding_with_floor);
     e->base.rect.x += colliding_with_left ? PLAYER_SPEED : 0;
     e->base.rect.x -= colliding_with_right ? PLAYER_SPEED : 0;
+    e->base.rect.y += colliding_with_top ? PLAYER_SPEED : 0;
 }
 // Load a texture from a file and replace MAGENTA with BLANK
 Texture2D load_texture(const char *path)
@@ -195,11 +202,12 @@ int main(void)
         {20.0f,20.0f,2,2},
         {20.0f,20.0f,2,2},
         {20.0f,20.0f,14,2},
+        {20.0f,20.0f,14,2},
         &player_invert_texture,
         false
     };
 
-    ent tiles[1024];
+    ent tiles[TILES_NUM];
 
     Color background_color = {115,155,255,255}; //sky blue
 
