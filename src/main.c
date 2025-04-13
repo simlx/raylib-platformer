@@ -48,7 +48,7 @@ ent tiles[TILES_NUM];
 jetpack_particle jetpack_particles[30];
 int next_jetpack_particle_count = 0;
 
-Color background_color = {115,155,255,255}; //sky blue
+Color background_color = {100,160,255,255}; //sky blue
 
 // TYPES <<
 
@@ -102,6 +102,7 @@ void register_input()
             ply.base.rect.y -= JETPACK_SPEED;
             player_fuel -= 1.0f;
             next_jetpack_particle_count++;
+            ply.on_ground = false;
         }
     } else {
         if (player_fuel < 99.9f) {
@@ -314,24 +315,23 @@ void apply_m_ent_collision(m_ent *e)
             );
         }
     }
-
-    if (colliding_with_on_ground == false)
-    {
-        e->on_ground = false;
-    }
-
-    if (colliding_with_floor) {
-        colliding_with_top = false;
-    }
+    
+    // If on ground, start falling when no on_ground detector rect collision
+    if (e->on_ground)
+        e->on_ground = colliding_with_on_ground;   
 
     if (!colliding_with_floor && !e->on_ground)
     {
+        // Falling ->
+        //
         apply_gravity(e);
     } else {
+        // Not Falling ->
+        //
         e->on_ground = true;
 
-       while (colliding_with_floor) {
-            e->base.rect.y -= 0.1;
+        while (colliding_with_floor) {
+            e->base.rect.y -= 0.01;
             update_m_ent(e);
 
             colliding_with_floor = CheckCollisionRecs(
@@ -405,8 +405,10 @@ int main(void)
         //
         // LOGIC >>
 
+        // Update Camera
         camera.target = (Vector2){ply.base.rect.x,ply.base.rect.y};
 
+        // Update Everything
         update_m_ent(&ply);
         update_jetpack_particles();
         apply_m_ent_collision(&ply);
@@ -416,31 +418,24 @@ int main(void)
         //
         // RENDER >>
         BeginDrawing();
-        BeginMode2D(camera);
         ClearBackground(background_color);
 
+        BeginMode2D(camera);
+
         if (!ply.inverted)
-        {
-            if (ply.on_ground)
-            {
-                draw_texture(ply.base.img, &ply.base.rect);
-            }
-            else
-            {
-                draw_texture(ply.falling_img, &ply.base.rect);
-            }
-        }
+            draw_texture(
+                    (ply.on_ground)
+                    ? ply.base.img
+                    : ply.falling_img,
+                    &ply.base.rect
+            );
         else
-        {
-            if (ply.on_ground)
-            {
-                draw_texture(ply.img_invert, &ply.base.rect);
-            }
-            else
-            {
-                draw_texture(ply.falling_img_invert, &ply.base.rect);
-            }
-        }
+            draw_texture( 
+                    (ply.on_ground) 
+                    ? ply.img_invert 
+                    : ply.falling_img_invert,
+                    &ply.base.rect
+            );
         
         draw_world();
         draw_jetpack_particles();
