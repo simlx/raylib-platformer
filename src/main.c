@@ -65,13 +65,13 @@ _,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
 _,1,1,1,1,1,1,1,1,_,_,1,1,1,_,2,2,2,2,_,_,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
 _,1,_,_,_,_,_,_,_,_,_,_,_,_,_,2,2,2,2,_,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
 _,1,_,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,
-_,1,_,_,7,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,1,1,1,7,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,4,_,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,7,_,_,_,_,_,1,1,_,1,_,1,_,1,_,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,7,_,_,_,_,_,1,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,7,_,_,_,_,_,1,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,7,_,_,_,_,_,1,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,7,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
+_,1,1,1,_,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,4,_,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
+_,_,_,1,_,_,_,_,_,_,1,1,_,_,_,_,_,_,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
+_,_,_,1,1,_,_,_,_,_,1,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+_,_,_,1,_,_,1,1,_,_,1,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+_,_,_,1,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
 _,_,_,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
 _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
 };
@@ -159,7 +159,15 @@ void initialize_jetpack(Texture2D *jetpack_particle_texture)
 }
 
 
-
+void draw_texture_scaled(Texture2D *texture, Rectangle *rect, float scale)
+{
+    DrawTextureEx(
+            *texture, 
+            (Vector2) {rect->x, rect->y},
+            0.0f,
+            scale,
+            WHITE);
+}
 void draw_texture(Texture2D *texture, Rectangle *rect)
 {
     DrawTextureEx(
@@ -239,12 +247,10 @@ void draw_world()
     }
 }
 
-void draw_jetpack_meter()
+void draw_jetpack_meter(Texture2D *jetpack_meter_texture)
 {
-    DrawRectangle(5, 100, 20, 100, (Color) {255,255,255,255});
-    DrawRectangle(5 + 3, 105, 14, 90, (Color) {50,50,50,255});
-
-    DrawRectangle(5 + 4, 106, 12, 88, (Color) {50,50,50,255});
+    Rectangle jetpack_meter_rect = {15, 15, 16, 48};
+    draw_texture_scaled(jetpack_meter_texture, &jetpack_meter_rect, 2.0f);
 
     // fuel color
     Color fuel_clr = (Color) {50,250,50,255};
@@ -253,11 +259,15 @@ void draw_jetpack_meter()
     } else if (player_fuel < 60) {
         fuel_clr = (Color) {250,250,50,255};
     }
+
+    int fuel_meter_height = 62;
+
     // fuel meter
-    DrawRectangle(5 + 4,
-            195 - (player_fuel/100) * 88,
-            12,
-            (player_fuel/100) * 88, fuel_clr);
+    DrawRectangle(
+            26,
+            102 - (player_fuel/100) * fuel_meter_height,
+            10,
+            (player_fuel/100) * fuel_meter_height, fuel_clr);
 }
 
 void apply_gravity(m_ent *entity)
@@ -372,6 +382,7 @@ int main(void)
     Texture2D player_falling_invert_texture = load_texture("res/player_falling_invert.png");
     Texture2D map_tile_texture              = load_texture("res/map_tile.png");
     Texture2D jetpack_particle_texture      = load_texture("res/jetpack_particle.png");
+    Texture2D jetpack_meter_texture         = load_texture("res/jetpack_meter.png");
 
     ply = (m_ent) { 
         (ent) {&player_texture, {20.0f,20.0f,TILE_WIDTH,TILE_WIDTH}},
@@ -451,7 +462,7 @@ int main(void)
 
         EndMode2D();
 
-        draw_jetpack_meter();
+        draw_jetpack_meter(&jetpack_meter_texture);
 
         EndDrawing();
         // RENDER <<
