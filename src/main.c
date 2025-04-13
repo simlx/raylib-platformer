@@ -6,12 +6,13 @@
 
 #define GRAVITY 1
 #define PLAYER_SPEED 1
-#define JETPACK_SPEED 2
+#define JETPACK_SPEED 1.5
 #define TILES_NUM 600
+#define TILE_WIDTH 16
 
-#define GAME_SCALE 3
+#define GAME_SCALE 4
 
-//#define DEBUG_PLAYER_COLLISIONS
+#define DEBUG_PLAYER_COLLISIONS
 
 #define _ 0
 
@@ -26,8 +27,12 @@ typedef struct {
     Rectangle left_collision_rect; // Right Collision Detection
     Rectangle down_collision_rect; // Bottom Collision Detection
     Rectangle top_collision_rect; // Bottom Collision Detection
-    Texture2D *inverted_img;
+    Rectangle on_ground_collision_rect;
+    Texture2D *img_invert;
+    Texture2D *falling_img;
+    Texture2D *falling_img_invert;
     bool inverted;
+    bool on_ground;
 } m_ent;
 
 float player_fuel = 99.9f;
@@ -91,7 +96,7 @@ void create_world(ent *tiles, Texture2D *map_tile_texture)
 {
     int x = 0;
     int y = 1;
-    int spacing = 16;
+    int spacing = TILE_WIDTH;
     for(int i = 0 ; i < TILES_NUM ; i++)
     {
         x++;
@@ -103,8 +108,8 @@ void create_world(ent *tiles, Texture2D *map_tile_texture)
         {
             tiles[i].rect.x = x * spacing;
             tiles[i].rect.y = y * spacing;
-            tiles[i].rect.width = 16;
-            tiles[i].rect.height = 16;
+            tiles[i].rect.width = TILE_WIDTH;
+            tiles[i].rect.height = TILE_WIDTH;
         }
         // Anything else is not visible
         else {
@@ -159,10 +164,29 @@ void draw_jetpack_meter()
             (player_fuel/100) * 88, fuel_clr);
 }
 
-void apply_gravity(m_ent *entity, bool neg)
+void apply_gravity(m_ent *entity)
 {
-    entity->base.rect.y += (neg) ? -GRAVITY/2 : GRAVITY;
+    entity->base.rect.y += GRAVITY;
 }
+
+void update_m_ent(m_ent *e)
+{
+    e->right_collision_rect.x = e->base.rect.x + 12;
+    e->right_collision_rect.y = e->base.rect.y + 3;
+
+    e->left_collision_rect.x = e->base.rect.x + 0;
+    e->left_collision_rect.y = e->base.rect.y + 3;
+
+    e->down_collision_rect.x = e->base.rect.x + 1;
+    e->down_collision_rect.y = e->base.rect.y + 13;
+
+    e->on_ground_collision_rect.x = e->base.rect.x + 1;
+    e->on_ground_collision_rect.y = e->base.rect.y + 15;
+
+    e->top_collision_rect.x = e->base.rect.x + 1;
+    e->top_collision_rect.y = e->base.rect.y + 1;
+}
+
 
 void apply_m_ent_collision(m_ent *e, ent *tiles)
 {
@@ -170,10 +194,14 @@ void apply_m_ent_collision(m_ent *e, ent *tiles)
     bool colliding_with_left = false;
     bool colliding_with_right = false;
     bool colliding_with_top = false;
+    bool colliding_with_on_ground = false;
+
+    int floor_collision_tile = 0;
 
      for (int i = 0 ; i < TILES_NUM ; i++) {
         if (!colliding_with_floor) {
             colliding_with_floor = CheckCollisionRecs(e->down_collision_rect, tiles[i].rect);
+            floor_collision_tile = i;
         }
         if (!colliding_with_left) {
             colliding_with_left = CheckCollisionRecs(e->left_collision_rect, tiles[i].rect);
@@ -184,16 +212,39 @@ void apply_m_ent_collision(m_ent *e, ent *tiles)
         if (!colliding_with_top) {
             colliding_with_top = CheckCollisionRecs(e->top_collision_rect, tiles[i].rect);
         }
+        if (!colliding_with_on_ground) {
+            colliding_with_on_ground = CheckCollisionRecs(e->on_ground_collision_rect, tiles[i].rect);
+        }
+    }
+
+    if (colliding_with_on_ground == false)
+    {
+        e->on_ground = false;
     }
 
     if (colliding_with_floor) {
         colliding_with_top = false;
     }
 
-    apply_gravity(e, colliding_with_floor);
+    if (!colliding_with_floor && !e->on_ground)
+    {
+        apply_gravity(e);
+    } else {
+        e->on_ground = true;
+
+       while (colliding_with_floor) {
+            e->base.rect.y -= 0.1;
+            update_m_ent(e);
+            colliding_with_floor = CheckCollisionRecs(
+                    e->down_collision_rect,
+                    tiles[floor_collision_tile].rect
+            );
+        }
+    }
+
     e->base.rect.x += colliding_with_left ? PLAYER_SPEED : 0;
     e->base.rect.x -= colliding_with_right ? PLAYER_SPEED : 0;
-    e->base.rect.y += colliding_with_top ? JETPACK_SPEED : 0;
+    e->base.rect.y += colliding_with_top ? PLAYER_SPEED : 0;
 }
 // Load a texture from a file and replace MAGENTA with BLANK
 Texture2D load_texture(const char *path)
@@ -204,25 +255,6 @@ Texture2D load_texture(const char *path)
     UnloadImage(img);
     return tex;
 }
-
-void update_m_ent(m_ent *e, ent *tiles)
-{
-    e->right_collision_rect.x = e->base.rect.x + 12;
-    e->right_collision_rect.y = e->base.rect.y + 3;
-
-    e->left_collision_rect.x = e->base.rect.x + 0;
-    e->left_collision_rect.y = e->base.rect.y + 3;
-
-    e->down_collision_rect.x = e->base.rect.x + 1;
-    e->down_collision_rect.y = e->base.rect.y + 14;
-
-    e->top_collision_rect.x = e->base.rect.x + 1;
-    e->top_collision_rect.y = e->base.rect.y + 1;
-
-
-
-}
-
 int main(void)
 {
     // INIT >>
@@ -232,15 +264,21 @@ int main(void)
 	
     Texture2D player_texture = load_texture("res/player_base.png");
     Texture2D player_invert_texture = load_texture("res/player_base_invert.png");
+    Texture2D player_falling_texture = load_texture("res/player_falling.png");
+    Texture2D player_falling_invert_texture = load_texture("res/player_falling_invert.png");
     Texture2D map_tile_texture = load_texture("res/map_tile.png");
 
     m_ent ply = { 
-        (ent) {&player_texture, {20.0f,20.0f,16,16}},
-        {20.0f,20.0f,2,10},
-        {20.0f,20.0f,2,10},
-        {20.0f,20.0f,12,2},
-        {20.0f,20.0f,12,2},
+        (ent) {&player_texture, {20.0f,20.0f,TILE_WIDTH,TILE_WIDTH}},
+        {20.0f,20.0f,2,10}, // right
+        {20.0f,20.0f,2,10}, // left
+        {20.0f,20.0f,12,2}, // down
+        {20.0f,20.0f,12,2}, // top
+        {20.0f,20.0f,12,2},  // on_ground
         &player_invert_texture,
+        &player_falling_texture,
+        &player_falling_invert_texture,
+        false,
         false
     };
 
@@ -267,7 +305,7 @@ int main(void)
 
         camera.target = (Vector2){ply.base.rect.x,ply.base.rect.y};
 
-        update_m_ent(&ply, tiles);
+        update_m_ent(&ply);
         apply_m_ent_collision(&ply, tiles);
 
         // GAME LOGIC <<
@@ -279,18 +317,36 @@ int main(void)
         ClearBackground(background_color);
 
         if (!ply.inverted)
-            draw_ent(ply.base.img, &ply.base.rect);
+        {
+            if (ply.on_ground)
+            {
+                draw_ent(ply.base.img, &ply.base.rect);
+            }
+            else
+            {
+                draw_ent(ply.falling_img, &ply.base.rect);
+            }
+        }
         else
-            draw_ent(ply.inverted_img, &ply.base.rect);
-
+        {
+            if (ply.on_ground)
+            {
+                draw_ent(ply.img_invert, &ply.base.rect);
+            }
+            else
+            {
+                draw_ent(ply.falling_img_invert, &ply.base.rect);
+            }
+        }
         draw_world(tiles);
  
         #ifdef DEBUG_PLAYER_COLLISIONS   
-            Color debug_clr = (Color) {255,0,255,200};
+            Color debug_clr = (Color) {255,0,255,100};
             DrawRectangleRec(ply.left_collision_rect, debug_clr);
             DrawRectangleRec(ply.right_collision_rect, debug_clr);
             DrawRectangleRec(ply.down_collision_rect, debug_clr);
             DrawRectangleRec(ply.top_collision_rect, debug_clr);
+            DrawRectangleRec(ply.on_ground_collision_rect, debug_clr);
         #endif
 
         EndMode2D();
