@@ -6,13 +6,13 @@
 
 #define GRAVITY 1
 #define PLAYER_SPEED 1
-#define JETPACK_SPEED 1.5
+#define JETPACK_SPEED 1.7
 #define TILES_NUM 600
 #define TILE_WIDTH 16
 
-#define GAME_SCALE 4
+#define GAME_SCALE 3
 
-#define DEBUG_PLAYER_COLLISIONS
+// #define DEBUG_PLAYER_COLLISIONS
 
 #define _ 0
 
@@ -33,9 +33,22 @@ typedef struct {
     Texture2D *falling_img_invert;
     bool inverted;
     bool on_ground;
+    int walking_time;
 } m_ent;
+typedef struct {
+    ent base;
+    int lifetime;
+    bool alive;
+} jetpack_particle;
 
 float player_fuel = 99.9f;
+
+m_ent ply;
+ent tiles[TILES_NUM];
+jetpack_particle jetpack_particles[30];
+int next_jetpack_particle_count = 0;
+
+Color background_color = {115,155,255,255}; //sky blue
 
 // TYPES <<
 
@@ -68,22 +81,27 @@ void player_jump()
 
 }
 
-void register_input(m_ent *ply)
+void register_input()
 {
     if (IsKeyDown(KEY_RIGHT)) {
-        ply->base.rect.x += PLAYER_SPEED;
-        ply->inverted = false;
+        ply.base.rect.x += (ply.walking_time > 15) ? PLAYER_SPEED : PLAYER_SPEED -0.4;
+        ply.inverted = false;
+        ply.walking_time++;
     }
-
-    if (IsKeyDown(KEY_LEFT)) {
-        ply->base.rect.x -= PLAYER_SPEED;
-        ply->inverted = true;
+    else if (IsKeyDown(KEY_LEFT)) {
+        ply.base.rect.x -= (ply.walking_time > 15) ? PLAYER_SPEED : PLAYER_SPEED -0.4;
+        ply.inverted = true;
+        ply.walking_time++;
+    }
+    else {
+        ply.walking_time = 0;
     }
 
     if (IsKeyDown(KEY_UP)) {
         if (player_fuel > 0) {
-            ply->base.rect.y -= JETPACK_SPEED;
+            ply.base.rect.y -= JETPACK_SPEED;
             player_fuel -= 1.0f;
+            next_jetpack_particle_count++;
         }
     } else {
         if (player_fuel < 99.9f) {
@@ -92,7 +110,7 @@ void register_input(m_ent *ply)
     }
 }
 
-void create_world(ent *tiles, Texture2D *map_tile_texture)
+void create_world(Texture2D *map_tile_texture)
 {
     int x = 0;
     int y = 1;
@@ -125,7 +143,23 @@ void create_world(ent *tiles, Texture2D *map_tile_texture)
     }
 }
 
-void draw_ent(Texture2D *texture, Rectangle *rect)
+void initialize_jetpack(Texture2D *jetpack_particle_texture)
+{
+    for (int i = 0 ; i < 30 ; i++)
+    {
+        jetpack_particle *jp = &jetpack_particles[i];
+
+        jp->base.rect.x = -999;
+        jp->base.rect.y = -999;
+        jp->base.rect.width = 16;
+        jp->base.rect.height = 16;
+        jp->base.img = jetpack_particle_texture;
+    }
+}
+
+
+
+void draw_texture(Texture2D *texture, Rectangle *rect)
 {
     DrawTextureEx(
             *texture, 
@@ -135,11 +169,72 @@ void draw_ent(Texture2D *texture, Rectangle *rect)
             WHITE);
 }
 
-void draw_world(ent *tiles)
+void draw_jetpack_particles()
+{
+    for (int i = 0 ; i < 30 ; i++)
+    {
+        jetpack_particle *jp = &jetpack_particles[i];
+        draw_texture(jp->base.img,&jp->base.rect);
+    }
+}
+
+void create_jetpack_particle(jetpack_particle *jp)
+{
+    jp->alive = true;
+    jp->lifetime = 0;
+    jp->base.rect.x = ply.base.rect.x + ( (ply.inverted) ? 4 : -4  );
+    jp->base.rect.y = ply.base.rect.y + 6;
+}
+
+void destroy_jetpack_particle(jetpack_particle *jp)
+{
+    jp->alive = false;
+    jp->base.rect.x = -999;
+    jp->base.rect.y = -999;
+}
+
+void update_jetpack_particles()
+{
+    bool spawn_next_particle = false;
+
+    if (next_jetpack_particle_count > 1)
+    {
+        next_jetpack_particle_count = 0;
+        spawn_next_particle = true;
+    }
+
+    for (int i = 0 ; i < 30 ; i++)
+    {
+        jetpack_particle *jp = &jetpack_particles[i];
+        if (jp->alive)
+        {
+            int r = GetRandomValue(-1,1);
+            int r2 = GetRandomValue(0,1);
+
+            jp->base.rect.x += r;
+            jp->base.rect.y += r2 * ((30 - jp->lifetime)/12);
+            jp->lifetime++;
+
+            if (jp->lifetime > 20) {
+                destroy_jetpack_particle(jp);
+            }
+        }
+        else
+        {
+            if (spawn_next_particle)
+            {
+                spawn_next_particle = false;
+                create_jetpack_particle(jp);
+            }
+        }
+    }
+}
+
+void draw_world()
 {
     for (int i = 0 ; i < TILES_NUM ; i++) 
     {
-        draw_ent(tiles[i].img, &tiles[i].rect);
+        draw_texture(tiles[i].img, &tiles[i].rect);
     }
 }
 
@@ -188,7 +283,7 @@ void update_m_ent(m_ent *e)
 }
 
 
-void apply_m_ent_collision(m_ent *e, ent *tiles)
+void apply_m_ent_collision(m_ent *e)
 {
     bool colliding_with_floor = false;
     bool colliding_with_left = false;
@@ -213,7 +308,10 @@ void apply_m_ent_collision(m_ent *e, ent *tiles)
             colliding_with_top = CheckCollisionRecs(e->top_collision_rect, tiles[i].rect);
         }
         if (!colliding_with_on_ground) {
-            colliding_with_on_ground = CheckCollisionRecs(e->on_ground_collision_rect, tiles[i].rect);
+            colliding_with_on_ground = CheckCollisionRecs(
+                    e->on_ground_collision_rect,
+                    tiles[i].rect
+            );
         }
     }
 
@@ -235,6 +333,7 @@ void apply_m_ent_collision(m_ent *e, ent *tiles)
        while (colliding_with_floor) {
             e->base.rect.y -= 0.1;
             update_m_ent(e);
+
             colliding_with_floor = CheckCollisionRecs(
                     e->down_collision_rect,
                     tiles[floor_collision_tile].rect
@@ -242,9 +341,14 @@ void apply_m_ent_collision(m_ent *e, ent *tiles)
         }
     }
 
-    e->base.rect.x += colliding_with_left ? PLAYER_SPEED : 0;
-    e->base.rect.x -= colliding_with_right ? PLAYER_SPEED : 0;
-    e->base.rect.y += colliding_with_top ? PLAYER_SPEED : 0;
+    if (e->walking_time > 15) {
+        e->base.rect.x += colliding_with_left ? PLAYER_SPEED : 0;
+        e->base.rect.x -= colliding_with_right ? PLAYER_SPEED : 0;
+    } else {
+        e->base.rect.x += colliding_with_left ? PLAYER_SPEED -0.4 : 0;
+        e->base.rect.x -= colliding_with_right ? PLAYER_SPEED -0.4 : 0;
+    }
+    e->base.rect.y += colliding_with_top ? PLAYER_SPEED -0.2 : 0;
 }
 // Load a texture from a file and replace MAGENTA with BLANK
 Texture2D load_texture(const char *path)
@@ -262,13 +366,14 @@ int main(void)
 	SetTargetFPS(60);
     // INIT <<
 	
-    Texture2D player_texture = load_texture("res/player_base.png");
-    Texture2D player_invert_texture = load_texture("res/player_base_invert.png");
-    Texture2D player_falling_texture = load_texture("res/player_falling.png");
+    Texture2D player_texture                = load_texture("res/player_base.png");
+    Texture2D player_invert_texture         = load_texture("res/player_base_invert.png");
+    Texture2D player_falling_texture        = load_texture("res/player_falling.png");
     Texture2D player_falling_invert_texture = load_texture("res/player_falling_invert.png");
-    Texture2D map_tile_texture = load_texture("res/map_tile.png");
+    Texture2D map_tile_texture              = load_texture("res/map_tile.png");
+    Texture2D jetpack_particle_texture      = load_texture("res/jetpack_particle.png");
 
-    m_ent ply = { 
+    ply = (m_ent) { 
         (ent) {&player_texture, {20.0f,20.0f,TILE_WIDTH,TILE_WIDTH}},
         {20.0f,20.0f,2,10}, // right
         {20.0f,20.0f,2,10}, // left
@@ -282,11 +387,8 @@ int main(void)
         false
     };
 
-    ent tiles[TILES_NUM];
-
-    Color background_color = {115,155,255,255}; //sky blue
-
-    create_world(tiles, &map_tile_texture);
+    create_world(&map_tile_texture);
+    initialize_jetpack(&jetpack_particle_texture);
     
     Camera2D camera = { 0 };
     camera.target = (Vector2){ply.base.rect.x,ply.base.rect.y};
@@ -297,18 +399,19 @@ int main(void)
 	while (!WindowShouldClose())
 	{
         // INPUT >>
-        register_input(&ply);
+        register_input();
         // INPUT <<
         //
         //
-        // GAME LOGIC >>
+        // LOGIC >>
 
         camera.target = (Vector2){ply.base.rect.x,ply.base.rect.y};
 
         update_m_ent(&ply);
-        apply_m_ent_collision(&ply, tiles);
+        update_jetpack_particles();
+        apply_m_ent_collision(&ply);
 
-        // GAME LOGIC <<
+        // LOGIC <<
         //
         //
         // RENDER >>
@@ -320,25 +423,27 @@ int main(void)
         {
             if (ply.on_ground)
             {
-                draw_ent(ply.base.img, &ply.base.rect);
+                draw_texture(ply.base.img, &ply.base.rect);
             }
             else
             {
-                draw_ent(ply.falling_img, &ply.base.rect);
+                draw_texture(ply.falling_img, &ply.base.rect);
             }
         }
         else
         {
             if (ply.on_ground)
             {
-                draw_ent(ply.img_invert, &ply.base.rect);
+                draw_texture(ply.img_invert, &ply.base.rect);
             }
             else
             {
-                draw_ent(ply.falling_img_invert, &ply.base.rect);
+                draw_texture(ply.falling_img_invert, &ply.base.rect);
             }
         }
-        draw_world(tiles);
+        
+        draw_world();
+        draw_jetpack_particles();
  
         #ifdef DEBUG_PLAYER_COLLISIONS   
             Color debug_clr = (Color) {255,0,255,100};
@@ -352,7 +457,6 @@ int main(void)
         EndMode2D();
 
         draw_jetpack_meter();
-
 
         EndDrawing();
         // RENDER <<
