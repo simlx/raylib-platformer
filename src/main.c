@@ -6,7 +6,7 @@
 
 #define GRAVITY 1
 #define PLAYER_SPEED 1
-#define JETPACK_SPEED 1.75f
+#define JETPACK_SPEED 2
 #define TILES_NUM 600
 
 #define GAME_SCALE 3
@@ -144,11 +144,19 @@ void draw_jetpack_meter()
     DrawRectangle(5 + 3, 105, 14, 90, (Color) {50,50,50,255});
 
     DrawRectangle(5 + 4, 106, 12, 88, (Color) {50,50,50,255});
-    // fuel
+
+    // fuel color
+    Color fuel_clr = (Color) {50,250,50,255};
+    if (player_fuel < 30) {
+        fuel_clr = (Color) {250,50,50,255};
+    } else if (player_fuel < 60) {
+        fuel_clr = (Color) {250,250,50,255};
+    }
+    // fuel meter
     DrawRectangle(5 + 4,
             195 - (player_fuel/100) * 88,
             12,
-            (player_fuel/100) * 88, (Color) {250,50,50,255});
+            (player_fuel/100) * 88, fuel_clr);
 }
 
 void apply_gravity(m_ent *entity, bool neg)
@@ -185,7 +193,7 @@ void apply_m_ent_collision(m_ent *e, ent *tiles)
     apply_gravity(e, colliding_with_floor);
     e->base.rect.x += colliding_with_left ? PLAYER_SPEED : 0;
     e->base.rect.x -= colliding_with_right ? PLAYER_SPEED : 0;
-    e->base.rect.y += colliding_with_top ? JETPACK_SPEED*0.5 : 0;
+    e->base.rect.y += colliding_with_top ? JETPACK_SPEED : 0;
 }
 // Load a texture from a file and replace MAGENTA with BLANK
 Texture2D load_texture(const char *path)
@@ -244,7 +252,7 @@ int main(void)
     
     Camera2D camera = { 0 };
     camera.target = (Vector2){ply.base.rect.x,ply.base.rect.y};
-    camera.offset = (Vector2){SCREEN_WIDTH/2.0f, SCREEN_HEIGHT/2.0f};
+    camera.offset = (Vector2){SCREEN_WIDTH/2, SCREEN_HEIGHT/2};
     camera.rotation = 0.0f;
     camera.zoom = GAME_SCALE;
 
