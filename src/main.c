@@ -130,21 +130,33 @@ void draw_jetpack_meter()
             (player_fuel/100) * 88, (Color) {250,50,50,255});
 }
 
-bool check_world_collision(m_ent *entity, ent *tiles)
-{
-    for (int i = 0 ; i < 1023 ; i++) {
-        if (CheckCollisionRecs(entity->base.rect, tiles[i].rect)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 void apply_gravity(m_ent *entity, bool neg)
 {
     entity->base.rect.y += (neg) ? -GRAVITY/2 : GRAVITY;
 }
 
+void apply_m_ent_collision(m_ent *e, ent *tiles)
+{
+    bool colliding_with_floor = false;
+    bool colliding_with_left = false;
+    bool colliding_with_right = false;
+
+     for (int i = 0 ; i < 1023 ; i++) {
+        if (!colliding_with_floor) {
+            colliding_with_floor = CheckCollisionRecs(e->down_collision_rect, tiles[i].rect);
+        }
+        if (!colliding_with_left) {
+            colliding_with_left = CheckCollisionRecs(e->left_collision_rect, tiles[i].rect);
+        }
+        if (!colliding_with_right) {
+            colliding_with_right = CheckCollisionRecs(e->right_collision_rect, tiles[i].rect);
+        }
+    }
+
+    apply_gravity(e, colliding_with_floor);
+    e->base.rect.x += colliding_with_left ? PLAYER_SPEED : 0;
+    e->base.rect.x -= colliding_with_right ? PLAYER_SPEED : 0;
+}
 // Load a texture from a file and replace MAGENTA with BLANK
 Texture2D load_texture(const char *path)
 {
@@ -153,6 +165,18 @@ Texture2D load_texture(const char *path)
     Texture2D tex =  LoadTextureFromImage(img);
     UnloadImage(img);
     return tex;
+}
+
+void update_m_ent(m_ent *e, ent *tiles)
+{
+    e->right_collision_rect.x = e->base.rect.x + 14;
+    e->right_collision_rect.y = e->base.rect.y + 13;
+
+    e->left_collision_rect.x = e->base.rect.x ;
+    e->left_collision_rect.y = e->base.rect.y + 13;
+
+    e->down_collision_rect.x = e->base.rect.x;
+    e->down_collision_rect.y = e->base.rect.y + 14;
 }
 
 int main(void)
@@ -168,9 +192,9 @@ int main(void)
 
     m_ent ply = { 
         (ent) {&player_texture, {20.0f,20.0f,16,16}},
-        {20.0f,20.0f,16,16},
-        {20.0f,20.0f,16,16},
-        {20.0f,20.0f,16,16},
+        {20.0f,20.0f,2,2},
+        {20.0f,20.0f,2,2},
+        {20.0f,20.0f,14,2},
         &player_invert_texture,
         false
     };
@@ -198,11 +222,9 @@ int main(void)
 
         camera.target = (Vector2){ply.base.rect.x,ply.base.rect.y};
 
-        if (!check_world_collision(&ply, tiles)) {
-            apply_gravity(&ply, false); 
-        } else {
-            apply_gravity(&ply, true);
-        }
+        update_m_ent(&ply, tiles);
+        apply_m_ent_collision(&ply, tiles);
+
         // GAME LOGIC <<
         //
         //
@@ -221,6 +243,7 @@ int main(void)
         EndMode2D();
 
         draw_jetpack_meter();
+
         EndDrawing();
         // RENDER <<
 	}
