@@ -105,8 +105,8 @@ void register_input()
             ply.on_ground = false;
         }
     } else {
-        if (player_fuel < 99.9f) {
-            player_fuel += 0.25f;
+        if (player_fuel < 99.9f && ply.on_ground) {
+            player_fuel += 0.30f;
         }
     }
 }
@@ -250,7 +250,7 @@ void draw_world()
 void draw_jetpack_meter(Texture2D *jetpack_meter_texture)
 {
     Rectangle jetpack_meter_rect = {15, 15, 16, 48};
-    draw_texture_scaled(jetpack_meter_texture, &jetpack_meter_rect, 2.0f);
+    draw_texture_scaled(jetpack_meter_texture, &jetpack_meter_rect, 3.0f);
 
     // fuel color
     Color fuel_clr = (Color) {50,250,50,255};
@@ -260,13 +260,13 @@ void draw_jetpack_meter(Texture2D *jetpack_meter_texture)
         fuel_clr = (Color) {250,250,50,255};
     }
 
-    int fuel_meter_height = 62;
+    int fuel_meter_height = 95;
 
     // fuel meter
     DrawRectangle(
-            26,
-            102 - (player_fuel/100) * fuel_meter_height,
-            10,
+            30,
+            146  - (player_fuel/100) * fuel_meter_height,
+            18,
             (player_fuel/100) * fuel_meter_height, fuel_clr);
 }
 
