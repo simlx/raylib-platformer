@@ -103,9 +103,9 @@ void draw_ent(Texture2D *texture, Rectangle *rect)
 {
     DrawTextureEx(
             *texture, 
-            (Vector2) {rect->x * GAME_SCALE, rect->y * GAME_SCALE},
+            (Vector2) {rect->x, rect->y},
             0.0f,
-            GAME_SCALE,
+            1.0f,
             WHITE);
 }
 
@@ -181,6 +181,12 @@ int main(void)
 
     create_world(tiles, &map_tile_texture);
     
+    Camera2D camera = { 0 };
+    camera.target = (Vector2){ply.base.rect.x,ply.base.rect.y};
+    camera.offset = (Vector2){SCREEN_WIDTH/2.0f, SCREEN_HEIGHT/2.0f};
+    camera.rotation = 0.0f;
+    camera.zoom = GAME_SCALE;
+
 	while (!WindowShouldClose())
 	{
         // INPUT >>
@@ -189,6 +195,9 @@ int main(void)
         //
         //
         // GAME LOGIC >>
+
+        camera.target = (Vector2){ply.base.rect.x,ply.base.rect.y};
+
         if (!check_world_collision(&ply, tiles)) {
             apply_gravity(&ply, false); 
         } else {
@@ -199,6 +208,7 @@ int main(void)
         //
         // RENDER >>
         BeginDrawing();
+        BeginMode2D(camera);
         ClearBackground(background_color);
 
         if (!ply.inverted)
@@ -207,8 +217,10 @@ int main(void)
             draw_ent(ply.inverted_img, &ply.base.rect);
 
         draw_world(tiles);
-        draw_jetpack_meter();
+    
+        EndMode2D();
 
+        draw_jetpack_meter();
         EndDrawing();
         // RENDER <<
 	}
