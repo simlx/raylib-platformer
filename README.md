@@ -1,6 +1,6 @@
 # Jump&Run Game
 
-![screenshot](GameScreenshot1.PNG)
+![screenshot](res/GameScreenshot1.PNG)
 
 ## Build
 ### Windows
