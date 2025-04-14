@@ -37,6 +37,7 @@ typedef struct {
     bool inverted;
     bool on_ground;
     int walking_time;
+    bool alive;
 } m_ent; //moving entity
          
 typedef struct {
@@ -94,14 +95,14 @@ Texture2D none_texture                  ;
 // 9 == Flag
 int level[] = { // 40 x 15
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-1,_,_,_,_,_,_,_,_,_,_,1,1,1,_,2,2,2,2,_,_,_,_,_,3,1,2,2,2,_,_,_,_,_,_,_,_,_,_,_,
+1,_,_,_,_,_,2,2,2,2,_,1,1,1,_,2,2,2,2,_,_,_,_,_,3,1,2,2,2,_,_,_,_,_,_,_,_,_,_,_,
 1,_,_,_,_,_,_,_,_,_,_,1,1,1,_,2,2,2,2,_,_,_,1,1,1,1,2,2,2,_,_,_,_,_,_,9,_,_,_,_,
-1,1,1,1,1,1,1,1,1,_,_,1,1,1,_,2,2,2,2,_,_,1,1,_,_,_,2,2,2,_,_,1,1,1,1,1,1,_,_,_,
+1,1,1,1,1,1,1,1,1,1,_,1,1,1,_,2,2,2,2,_,_,1,1,_,_,_,2,2,2,_,_,1,1,1,1,1,1,_,_,_,
 _,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,1,_,_,_,_,_,_,_,_,1,1,1,_,_,_,_,_,_,_,
 _,1,_,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,
 _,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
 _,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,4,_,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,_,_,_,_,_,_,_,_,_,_,1,1,_,_,_,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
+_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,1,1,1,_,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
 _,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
 _,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
 _,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
@@ -117,6 +118,8 @@ void player_jump()
 
 void register_input()
 {
+    if (!ply.alive) return;
+
     if (IsKeyDown(KEY_RIGHT)) {
         ply.base.rect.x += 
             (ply.walking_time > 15)
@@ -209,6 +212,15 @@ void initialize_jetpack()
 }
 
 
+void draw_player_kill_texture(Texture2D *texture, Rectangle *rect, float rotation)
+{
+    DrawTextureEx(
+            *texture, 
+            (Vector2) {rect->x, rect->y + 25},
+            rotation,
+            1.0f,
+            WHITE);
+}
 void draw_texture_scaled(Texture2D *texture, Rectangle *rect, float scale)
 {
     DrawTextureEx(
@@ -369,6 +381,11 @@ void pickup_key(ent *key)
     key->rect.y = -999;   
 }
 
+void kill_player()
+{
+    ply.alive = false;
+}
+
 void handle_ent_collision(int *ent_ids[4])
 {
     for (int i = 0 ; i < 4 ; i++)
@@ -396,6 +413,10 @@ void handle_ent_collision(int *ent_ids[4])
         else if (tile->type_id == ENT_FLAG)
         {
             touch_flag(tile);
+        }
+        else if (tile->type_id == ENT_SPIKES)
+        {
+            kill_player();
         }
     }
 }
@@ -482,7 +503,6 @@ void apply_m_ent_collision(m_ent *e)
     }
     e->base.rect.y += colliding_with_top ? PLAYER_SPEED -0.2 : 0;
 
-
 }
 // Load a texture from a file and replace MAGENTA with BLANK
 Texture2D load_texture(const char *path)
@@ -526,7 +546,9 @@ int main(void)
         &player_falling_texture,
         &player_falling_invert_texture,
         false,
-        false
+        false,
+        0,
+        true
     };
 
     create_world(&map_tile_texture);
@@ -568,20 +590,26 @@ int main(void)
 
         BeginMode2D(camera);
 
-        if (!ply.inverted)
-            draw_texture(
-                    (ply.on_ground)
-                    ? ply.base.img
-                    : ply.falling_img,
-                    &ply.base.rect
-            );
-        else
-            draw_texture( 
-                    (ply.on_ground) 
-                    ? ply.img_invert 
-                    : ply.falling_img_invert,
-                    &ply.base.rect
-            );
+        if (ply.alive)
+        {
+            if (!ply.inverted)
+                draw_texture(
+                        (ply.on_ground)
+                        ? ply.base.img
+                        : ply.falling_img,
+                        &ply.base.rect
+                );
+            else
+                draw_texture( 
+                        (ply.on_ground) 
+                        ? ply.img_invert 
+                        : ply.falling_img_invert,
+                        &ply.base.rect
+                );
+        } else {
+            // draw player ded
+            draw_player_kill_texture(ply.falling_img,&ply.base.rect,-90.0f);
+        }
         
         draw_world();
         draw_jetpack_particles();
