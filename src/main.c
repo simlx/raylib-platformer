@@ -1,5 +1,6 @@
 #include "raylib.h"
 #include <stdio.h>
+#include <string.h>
 
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 320
@@ -12,7 +13,7 @@
 
 #define GAME_SCALE 3
 
-// #define DEBUG_PLAYER_COLLISIONS
+//#define DEBUG_PLAYER_COLLISIONS
 
 #define _ 0
 
@@ -20,7 +21,9 @@
 typedef struct {
     Texture2D *img;
     Rectangle rect; // Base Rectangle
-} ent;
+    int type_id;
+} ent; //entity
+
 typedef struct {
     ent base;
     Rectangle right_collision_rect; // Left Collision Detection
@@ -34,7 +37,8 @@ typedef struct {
     bool inverted;
     bool on_ground;
     int walking_time;
-} m_ent;
+} m_ent; //moving entity
+         
 typedef struct {
     ent base;
     int lifetime;
@@ -42,15 +46,44 @@ typedef struct {
 } jetpack_particle;
 
 float player_fuel = 99.9f;
+int coins = 0;
+bool key_collected = false;
 
 m_ent ply;
+ent counter_coin;
+
+Font minecraft_font;
+
 ent tiles[TILES_NUM];
 jetpack_particle jetpack_particles[30];
 int next_jetpack_particle_count = 0;
 
 Color background_color = {100,160,255,255}; //sky blue
+	
+Texture2D player_texture                ;
+Texture2D player_invert_texture         ;
+Texture2D player_falling_texture        ;
+Texture2D player_falling_invert_texture ;
+Texture2D map_tile_texture              ;
+Texture2D jetpack_particle_texture      ;
+Texture2D jetpack_meter_texture         ;
+Texture2D coin_texture                  ;
+Texture2D door_texture                  ;
+Texture2D key_texture                   ;
+Texture2D spikes_texture                ;
+Texture2D flag_texture                  ;
+Texture2D none_texture                  ;
+
+
+
+
 
 // TYPES <<
+#define ENT_COIN 2
+#define ENT_KEY 3
+#define ENT_DOOR 4
+#define ENT_SPIKES 5
+#define ENT_FLAG 9
 
 // Map Tile Ids:
 // 1 == Wall
@@ -58,20 +91,21 @@ Color background_color = {100,160,255,255}; //sky blue
 // 3 == Key
 // 4 == Door
 // 7 == Elevator
-int world[] = { // 40 x 15
-_,_,_,_,_,_,_,_,_,_,_,_,_,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,3,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,1,1,1,1,1,1,1,1,_,_,1,1,1,_,2,2,2,2,_,_,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,2,2,2,2,_,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+// 9 == Flag
+int level[] = { // 40 x 15
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+1,_,_,_,_,_,_,_,_,_,_,1,1,1,_,2,2,2,2,_,_,_,_,_,3,1,2,2,2,_,_,_,_,_,_,_,_,_,_,_,
+1,_,_,_,_,_,_,_,_,_,_,1,1,1,_,2,2,2,2,_,_,_,1,1,1,1,2,2,2,_,_,_,_,_,_,9,_,_,_,_,
+1,1,1,1,1,1,1,1,1,_,_,1,1,1,_,2,2,2,2,_,_,1,1,_,_,_,2,2,2,_,_,1,1,1,1,1,1,_,_,_,
+_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,1,_,_,_,_,_,_,_,_,1,1,1,_,_,_,_,_,_,_,
 _,1,_,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,
 _,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,1,1,1,_,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,4,_,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,_,_,_,_,_,_,1,1,_,_,_,_,_,_,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,1,_,_,_,_,_,1,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,_,_,1,1,_,_,1,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+_,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,4,_,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
+_,_,_,1,_,_,_,_,_,_,_,_,_,_,1,1,_,_,_,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
 _,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+_,_,_,1,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
 _,_,_,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
 _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
 };
@@ -84,12 +118,20 @@ void player_jump()
 void register_input()
 {
     if (IsKeyDown(KEY_RIGHT)) {
-        ply.base.rect.x += (ply.walking_time > 15) ? PLAYER_SPEED : PLAYER_SPEED -0.4;
+        ply.base.rect.x += 
+            (ply.walking_time > 15)
+            ? PLAYER_SPEED
+            : PLAYER_SPEED - (PLAYER_SPEED/2);
+
         ply.inverted = false;
         ply.walking_time++;
     }
     else if (IsKeyDown(KEY_LEFT)) {
-        ply.base.rect.x -= (ply.walking_time > 15) ? PLAYER_SPEED : PLAYER_SPEED -0.4;
+        ply.base.rect.x -= 
+            (ply.walking_time > 15) 
+            ? PLAYER_SPEED 
+            : PLAYER_SPEED - (PLAYER_SPEED/2);
+
         ply.inverted = true;
         ply.walking_time++;
     }
@@ -106,45 +148,53 @@ void register_input()
         }
     } else {
         if (player_fuel < 99.9f && ply.on_ground) {
-            player_fuel += 0.30f;
+            player_fuel += 0.80f;
         }
     }
 }
 
-void create_world(Texture2D *map_tile_texture)
+void create_world()
 {
     int x = 0;
-    int y = 1;
+    int y = 0;
     int spacing = TILE_WIDTH;
     for(int i = 0 ; i < TILES_NUM ; i++)
     {
-        x++;
+        ent *tile = &tiles[i];
 
-        tiles[i].img = map_tile_texture;
+        int type = level[x + (y * 40)];
 
-        // Wall
-        if (world[x + (y * 40)] == 1)
-        {
-            tiles[i].rect.x = x * spacing;
-            tiles[i].rect.y = y * spacing;
-            tiles[i].rect.width = TILE_WIDTH;
-            tiles[i].rect.height = TILE_WIDTH;
+        tile->img = &none_texture;
+        tile->rect.x = x * spacing;
+        tile->rect.y = y * spacing;
+        tile->rect.width = TILE_WIDTH;
+        tile->rect.height = TILE_WIDTH;
+        tile->type_id = type;
+
+        if (type == 0) {
+            tile->rect.x = -999;
+            tile->rect.y = -999;
         }
-        // Anything else is not visible
-        else {
-            tiles[i].rect.x = -999*spacing;
-            tiles[i].rect.y = -999*spacing;
-        }
+        if (type == 1) tile->img = &map_tile_texture;
+        if (type == 2) tile->img = &coin_texture;
+        if (type == 3) tile->img = &key_texture;
+        if (type == 4) tile->img = &door_texture;
+        if (type == 5) tile->img = &spikes_texture;
+        if (type == 9) tile->img = &flag_texture;
 
         if (x >= 40)
         {
             x = 0;
             y++;
         }
+        else
+        {
+            x++;
+        }
     }
 }
 
-void initialize_jetpack(Texture2D *jetpack_particle_texture)
+void initialize_jetpack()
 {
     for (int i = 0 ; i < 30 ; i++)
     {
@@ -154,7 +204,7 @@ void initialize_jetpack(Texture2D *jetpack_particle_texture)
         jp->base.rect.y = -999;
         jp->base.rect.width = 16;
         jp->base.rect.height = 16;
-        jp->base.img = jetpack_particle_texture;
+        jp->base.img = &jetpack_particle_texture;
     }
 }
 
@@ -221,7 +271,7 @@ void update_jetpack_particles()
             int r2 = GetRandomValue(0,1);
 
             jp->base.rect.x += r;
-            jp->base.rect.y += r2 * ((30 - jp->lifetime)/12);
+            jp->base.rect.y += r2 * ((40 - jp->lifetime)/15);
             jp->lifetime++;
 
             if (jp->lifetime > 20) {
@@ -247,10 +297,10 @@ void draw_world()
     }
 }
 
-void draw_jetpack_meter(Texture2D *jetpack_meter_texture)
+void draw_jetpack_meter()
 {
     Rectangle jetpack_meter_rect = {15, 15, 16, 48};
-    draw_texture_scaled(jetpack_meter_texture, &jetpack_meter_rect, 3.0f);
+    draw_texture_scaled(&jetpack_meter_texture, &jetpack_meter_rect, GAME_SCALE);
 
     // fuel color
     Color fuel_clr = (Color) {50,250,50,255};
@@ -277,10 +327,10 @@ void apply_gravity(m_ent *entity)
 
 void update_m_ent(m_ent *e)
 {
-    e->right_collision_rect.x = e->base.rect.x + 12;
+    e->right_collision_rect.x = e->base.rect.x + 13;
     e->right_collision_rect.y = e->base.rect.y + 3;
 
-    e->left_collision_rect.x = e->base.rect.x + 0;
+    e->left_collision_rect.x = e->base.rect.x + -1;
     e->left_collision_rect.y = e->base.rect.y + 3;
 
     e->down_collision_rect.x = e->base.rect.x + 1;
@@ -293,6 +343,62 @@ void update_m_ent(m_ent *e)
     e->top_collision_rect.y = e->base.rect.y + 1;
 }
 
+void destroy_ent(ent *entity)
+{
+    entity->rect.x = -999;
+    entity->rect.x = -999;
+}
+
+void touch_flag(ent *flag)
+{
+    ply.base.rect.x = 1000;
+}
+
+void open_door(ent *door)
+{
+}
+
+void pickup_coin(ent *coin)
+{
+    coins++;
+}
+
+void pickup_key(ent *key)
+{
+    key->rect.x = -999;
+    key->rect.y = -999;   
+}
+
+void handle_ent_collision(int *ent_ids[4])
+{
+    for (int i = 0 ; i < 4 ; i++)
+    {
+        ent *tile = &tiles[*ent_ids[i]];
+        if      (tile->type_id == ENT_COIN)
+        {
+            pickup_coin(tile);
+            destroy_ent(tile);
+        }
+        else if (tile->type_id == ENT_KEY)
+        {
+            key_collected = true;
+            pickup_key(tile);
+            destroy_ent(tile);
+        } 
+        else if (tile->type_id == ENT_DOOR)
+        {
+            if (key_collected)
+            {
+                open_door(tile);
+                destroy_ent(tile);
+            }
+        }
+        else if (tile->type_id == ENT_FLAG)
+        {
+            touch_flag(tile);
+        }
+    }
+}
 
 void apply_m_ent_collision(m_ent *e)
 {
@@ -302,7 +408,10 @@ void apply_m_ent_collision(m_ent *e)
     bool colliding_with_top = false;
     bool colliding_with_on_ground = false;
 
-    int floor_collision_tile = 0;
+    int floor_collision_tile = -1;
+    int right_collision_tile = -1;
+    int left_collision_tile = -1;
+    int top_collision_tile = -1;
 
      for (int i = 0 ; i < TILES_NUM ; i++) {
         if (!colliding_with_floor) {
@@ -311,12 +420,15 @@ void apply_m_ent_collision(m_ent *e)
         }
         if (!colliding_with_left) {
             colliding_with_left = CheckCollisionRecs(e->left_collision_rect, tiles[i].rect);
+            if (colliding_with_left) left_collision_tile = i;
         }
         if (!colliding_with_right) {
             colliding_with_right = CheckCollisionRecs(e->right_collision_rect, tiles[i].rect);
+            if (colliding_with_right) right_collision_tile = i;
         }
         if (!colliding_with_top) {
             colliding_with_top = CheckCollisionRecs(e->top_collision_rect, tiles[i].rect);
+            if (colliding_with_top) top_collision_tile = i;
         }
         if (!colliding_with_on_ground) {
             colliding_with_on_ground = CheckCollisionRecs(
@@ -326,6 +438,15 @@ void apply_m_ent_collision(m_ent *e)
         }
     }
     
+    int *colliding_ent_ids[4] = {
+        &left_collision_tile,
+        &right_collision_tile,
+        &top_collision_tile,
+        &floor_collision_tile
+    };
+
+    handle_ent_collision(colliding_ent_ids);
+
     // If on ground, start falling when no on_ground detector rect collision
     if (e->on_ground)
         e->on_ground = colliding_with_on_ground;   
@@ -335,7 +456,8 @@ void apply_m_ent_collision(m_ent *e)
         // Falling ->
         //
         apply_gravity(e);
-    } else {
+    } else    
+    {
         // Not Falling ->
         //
         e->on_ground = true;
@@ -350,15 +472,17 @@ void apply_m_ent_collision(m_ent *e)
             );
         }
     }
-
+ 
     if (e->walking_time > 15) {
         e->base.rect.x += colliding_with_left ? PLAYER_SPEED : 0;
         e->base.rect.x -= colliding_with_right ? PLAYER_SPEED : 0;
     } else {
-        e->base.rect.x += colliding_with_left ? PLAYER_SPEED -0.4 : 0;
-        e->base.rect.x -= colliding_with_right ? PLAYER_SPEED -0.4 : 0;
+        e->base.rect.x += colliding_with_left ? PLAYER_SPEED  : 0;
+        e->base.rect.x -= colliding_with_right ? PLAYER_SPEED  : 0;
     }
     e->base.rect.y += colliding_with_top ? PLAYER_SPEED -0.2 : 0;
+
+
 }
 // Load a texture from a file and replace MAGENTA with BLANK
 Texture2D load_texture(const char *path)
@@ -371,18 +495,25 @@ Texture2D load_texture(const char *path)
 }
 int main(void)
 {
-    // INIT >>
+    // INIT
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "mygame");
 	SetTargetFPS(60);
-    // INIT <<
 	
-    Texture2D player_texture                = load_texture("res/player_base.png");
-    Texture2D player_invert_texture         = load_texture("res/player_base_invert.png");
-    Texture2D player_falling_texture        = load_texture("res/player_falling.png");
-    Texture2D player_falling_invert_texture = load_texture("res/player_falling_invert.png");
-    Texture2D map_tile_texture              = load_texture("res/map_tile.png");
-    Texture2D jetpack_particle_texture      = load_texture("res/jetpack_particle.png");
-    Texture2D jetpack_meter_texture         = load_texture("res/jetpack_meter.png");
+    player_texture                = load_texture("res/player_base.png");
+    player_invert_texture         = load_texture("res/player_base_invert.png");
+    player_falling_texture        = load_texture("res/player_falling.png");
+    player_falling_invert_texture = load_texture("res/player_falling_invert.png");
+    map_tile_texture              = load_texture("res/map_tile.png");
+    jetpack_particle_texture      = load_texture("res/jetpack_particle.png");
+    jetpack_meter_texture         = load_texture("res/jetpack_meter.png");
+    coin_texture                  = load_texture("res/coin.png");
+    door_texture                  = load_texture("res/door.png");
+    key_texture                   = load_texture("res/key.png");
+    spikes_texture                = load_texture("res/spikes.png");
+    flag_texture                  = load_texture("res/flag.png");
+    none_texture                  = load_texture("res/none.png");
+
+    minecraft_font = LoadFont("res/Minecraft.ttf");
 
     ply = (m_ent) { 
         (ent) {&player_texture, {20.0f,20.0f,TILE_WIDTH,TILE_WIDTH}},
@@ -400,6 +531,7 @@ int main(void)
 
     create_world(&map_tile_texture);
     initialize_jetpack(&jetpack_particle_texture);
+    counter_coin = (ent) {&coin_texture, {10,260,16,16}};
     
     Camera2D camera = { 0 };
     camera.target = (Vector2){ply.base.rect.x,ply.base.rect.y};
@@ -407,29 +539,32 @@ int main(void)
     camera.rotation = 0.0f;
     camera.zoom = GAME_SCALE;
 
+    int game_tick = 0;
+
 	while (!WindowShouldClose())
 	{
-        // INPUT >>
+        game_tick++;
+
+        // INPUT
         register_input();
-        // INPUT <<
-        //
-        //
-        // LOGIC >>
+
+        // LOGIC
 
         // Update Camera
         camera.target = (Vector2){ply.base.rect.x,ply.base.rect.y};
 
-        // Update Everything
-        update_m_ent(&ply);
-        update_jetpack_particles();
-        apply_m_ent_collision(&ply);
-
-        // LOGIC <<
-        //
-        //
-        // RENDER >>
+        // Wait for the rendering to load before starting the game
+        if (game_tick > 30)
+        {
+            // Update Everything
+            update_m_ent(&ply);
+            update_jetpack_particles();
+            apply_m_ent_collision(&ply);
+        }
+        // RENDER
         BeginDrawing();
         ClearBackground(background_color);
+
 
         BeginMode2D(camera);
 
@@ -462,15 +597,35 @@ int main(void)
 
         EndMode2D();
 
-        draw_jetpack_meter(&jetpack_meter_texture);
+        draw_jetpack_meter();
+        draw_texture_scaled(counter_coin.img, &counter_coin.rect,3.0f);
 
+        char *coin_text;
+        strcpy(coin_text,"");
+        sprintf(coin_text,"x%d",coins);
+
+        DrawTextEx(minecraft_font,coin_text, (Vector2) {50.0f,280.0f}, 16, 4,WHITE);
+
+        if (game_tick < 30)
+        {
+            ClearBackground(BLUE);
+        }
         EndDrawing();
-        // RENDER <<
 	}
 
     UnloadTexture(player_texture);
     UnloadTexture(player_invert_texture);
+    UnloadTexture(player_falling_texture);
+    UnloadTexture(player_falling_invert_texture);
     UnloadTexture(map_tile_texture);
+    UnloadTexture(jetpack_particle_texture);
+    UnloadTexture(jetpack_meter_texture);
+    UnloadTexture(coin_texture);
+    UnloadTexture(door_texture);
+    UnloadTexture(key_texture);
+    UnloadTexture(spikes_texture);
+    UnloadTexture(flag_texture);
+    UnloadTexture(none_texture);
 
     CloseWindow();
 	return 0;
