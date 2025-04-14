@@ -156,6 +156,7 @@ void register_input()
     }
 }
 
+// Load the level into tiles
 void create_world()
 {
     int x = 0;
@@ -239,7 +240,6 @@ void draw_texture(Texture2D *texture, Rectangle *rect)
             1.0f,
             WHITE);
 }
-
 void draw_jetpack_particles()
 {
     for (int i = 0 ; i < 30 ; i++)
@@ -458,7 +458,7 @@ void apply_m_ent_collision(m_ent *e)
             );
         }
     }
-    
+
     int *colliding_ent_ids[4] = {
         &left_collision_tile,
         &right_collision_tile,
@@ -513,6 +513,69 @@ Texture2D load_texture(const char *path)
     UnloadImage(img);
     return tex;
 }
+
+void draw_coin_counter()
+{
+        char coin_text[100];
+        strcpy(coin_text,"");
+        sprintf(coin_text,"x%d",coins);
+        DrawTextEx(minecraft_font,coin_text, (Vector2) {50.0f,280.0f}, 16, 4,WHITE);
+}
+
+void draw_game(Camera2D *camera, int game_tick)
+{
+    BeginDrawing();
+    ClearBackground(background_color);
+
+    BeginMode2D(*camera);
+
+    if (ply.alive)
+    {
+        if (!ply.inverted)
+            draw_texture(
+                    (ply.on_ground)
+                    ? ply.base.img
+                    : ply.falling_img,
+                    &ply.base.rect
+            );
+        else
+            draw_texture( 
+                    (ply.on_ground) 
+                    ? ply.img_invert 
+                    : ply.falling_img_invert,
+                    &ply.base.rect
+            );
+    } else {
+        // draw player ded
+        draw_player_kill_texture(ply.falling_img,&ply.base.rect,-90.0f);
+    }
+    
+    draw_world();
+    draw_jetpack_particles();
+
+    #ifdef DEBUG_PLAYER_COLLISIONS   
+        Color debug_clr = (Color) {255,0,255,100};
+        DrawRectangleRec(ply.left_collision_rect, debug_clr);
+        DrawRectangleRec(ply.right_collision_rect, debug_clr);
+        DrawRectangleRec(ply.down_collision_rect, debug_clr);
+        DrawRectangleRec(ply.top_collision_rect, debug_clr);
+        DrawRectangleRec(ply.on_ground_collision_rect, debug_clr);
+    #endif
+
+    EndMode2D();
+
+    draw_jetpack_meter();
+    draw_texture_scaled(counter_coin.img, &counter_coin.rect,3.0f);
+    draw_coin_counter();
+
+    if (game_tick < 30)
+    {
+        ClearBackground(BLUE);
+    }
+    EndDrawing();
+}
+
+
 int main(void)
 {
     // INIT
@@ -533,7 +596,7 @@ int main(void)
     flag_texture                  = load_texture("res/flag.png");
     none_texture                  = load_texture("res/none.png");
 
-    minecraft_font = LoadFont("res/Minecraft.ttf");
+    minecraft_font = (Font) LoadFont("res/Minecraft.ttf");
 
     ply = (m_ent) { 
         (ent) {&player_texture, {20.0f,20.0f,TILE_WIDTH,TILE_WIDTH}},
@@ -571,8 +634,6 @@ int main(void)
         register_input();
 
         // LOGIC
-
-        // Update Camera
         camera.target = (Vector2){ply.base.rect.x,ply.base.rect.y};
 
         // Wait for the rendering to load before starting the game
@@ -584,61 +645,7 @@ int main(void)
             apply_m_ent_collision(&ply);
         }
         // RENDER
-        BeginDrawing();
-        ClearBackground(background_color);
-
-
-        BeginMode2D(camera);
-
-        if (ply.alive)
-        {
-            if (!ply.inverted)
-                draw_texture(
-                        (ply.on_ground)
-                        ? ply.base.img
-                        : ply.falling_img,
-                        &ply.base.rect
-                );
-            else
-                draw_texture( 
-                        (ply.on_ground) 
-                        ? ply.img_invert 
-                        : ply.falling_img_invert,
-                        &ply.base.rect
-                );
-        } else {
-            // draw player ded
-            draw_player_kill_texture(ply.falling_img,&ply.base.rect,-90.0f);
-        }
-        
-        draw_world();
-        draw_jetpack_particles();
- 
-        #ifdef DEBUG_PLAYER_COLLISIONS   
-            Color debug_clr = (Color) {255,0,255,100};
-            DrawRectangleRec(ply.left_collision_rect, debug_clr);
-            DrawRectangleRec(ply.right_collision_rect, debug_clr);
-            DrawRectangleRec(ply.down_collision_rect, debug_clr);
-            DrawRectangleRec(ply.top_collision_rect, debug_clr);
-            DrawRectangleRec(ply.on_ground_collision_rect, debug_clr);
-        #endif
-
-        EndMode2D();
-
-        draw_jetpack_meter();
-        draw_texture_scaled(counter_coin.img, &counter_coin.rect,3.0f);
-
-        char *coin_text;
-        strcpy(coin_text,"");
-        sprintf(coin_text,"x%d",coins);
-
-        DrawTextEx(minecraft_font,coin_text, (Vector2) {50.0f,280.0f}, 16, 4,WHITE);
-
-        if (game_tick < 30)
-        {
-            ClearBackground(BLUE);
-        }
-        EndDrawing();
+        draw_game(&camera, game_tick);
 	}
 
     UnloadTexture(player_texture);
