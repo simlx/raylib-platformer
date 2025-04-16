@@ -65,6 +65,7 @@ typedef struct {
 
 float player_fuel = 99.9f;
 int coins = 0;
+char coin_text[100];
 bool key_collected = false;
 
 m_ent ply;
@@ -75,6 +76,11 @@ Font minecraft_font;
 ent tiles[TILES_NUM];
 jetpack_particle jetpack_particles[30];
 int next_jetpack_particle_count = 0;
+Rectangle jetpack_meter_rect = {15, 15, 16, 48};
+
+Color FUEL_COLOR_RED = {250,50,50,255};
+Color FUEL_COLOR_YELLOW = {250,250,50,255};
+Color FUEL_COLOR_GREEN = {50,250,50,255};
 
 Color background_color = {100,160,255,255}; //sky blue
 
@@ -91,10 +97,6 @@ Texture2D key_texture                   ;
 Texture2D spikes_texture                ;
 Texture2D flag_texture                  ;
 Texture2D none_texture                  ;
-
-
-
-
 
 // TYPES <<
 #define ENT_COIN 2
@@ -141,19 +143,13 @@ void register_input()
     if (!ply.alive) return;
 
     if (IsKeyDown(KEY_RIGHT)) {
-        ply.base.rect.x +=
-            (ply.walking_time > 15)
-            ? PLAYER_SPEED
-            : PLAYER_SPEED - (PLAYER_SPEED/2);
+        ply.base.rect.x += (ply.walking_time > 15) ? PLAYER_SPEED : PLAYER_SPEED - (PLAYER_SPEED/2);
 
         ply.inverted = false;
         ply.walking_time++;
     }
     else if (IsKeyDown(KEY_LEFT)) {
-        ply.base.rect.x -=
-            (ply.walking_time > 15)
-            ? PLAYER_SPEED
-            : PLAYER_SPEED - (PLAYER_SPEED/2);
+        ply.base.rect.x -= (ply.walking_time > 15) ? PLAYER_SPEED : PLAYER_SPEED - (PLAYER_SPEED/2);
 
         ply.inverted = true;
         ply.walking_time++;
@@ -232,34 +228,21 @@ void initialize_jetpack()
     }
 }
 
-
 void draw_player_kill_texture(Texture2D *texture, Rectangle *rect, float rotation)
 {
-    DrawTextureEx(
-            *texture,
-            (Vector2) {rect->x, rect->y + 25},
-            rotation,
-            1.0f,
-            WHITE);
+    DrawTextureEx(*texture, (Vector2) {rect->x, rect->y + 25}, rotation, 1.0f, WHITE);
 }
+
 void draw_texture_scaled(Texture2D *texture, Rectangle *rect, float scale)
 {
-    DrawTextureEx(
-            *texture,
-            (Vector2) {rect->x, rect->y},
-            0.0f,
-            scale,
-            WHITE);
+    DrawTextureEx(*texture, (Vector2) {rect->x, rect->y}, 0.0f, scale, WHITE);
 }
+
 void draw_texture(Texture2D *texture, Rectangle *rect)
 {
-    DrawTextureEx(
-            *texture,
-            (Vector2) {rect->x, rect->y},
-            0.0f,
-            1.0f,
-            WHITE);
+    DrawTextureEx(*texture, (Vector2) {rect->x, rect->y}, 0.0f, 1.0f, WHITE);
 }
+
 void draw_jetpack_particles()
 {
     for (int i = 0 ; i < 30 ; i++)
@@ -273,7 +256,7 @@ void create_jetpack_particle(jetpack_particle *jp)
 {
     jp->alive = true;
     jp->lifetime = 0;
-    jp->base.rect.x = ply.base.rect.x + ( (ply.inverted) ? 4 : -4  );
+    jp->base.rect.x = ply.base.rect.x + ((ply.inverted) ? 4 : -4  );
     jp->base.rect.y = ply.base.rect.y + 6;
 }
 
@@ -331,25 +314,21 @@ void draw_world()
 
 void draw_jetpack_meter()
 {
-    Rectangle jetpack_meter_rect = {15, 15, 16, 48};
+
     draw_texture_scaled(&jetpack_meter_texture, &jetpack_meter_rect, GAME_SCALE);
 
     // fuel color
-    Color fuel_clr = (Color) {50,250,50,255};
-    if (player_fuel < 30) {
-        fuel_clr = (Color) {250,50,50,255};
-    } else if (player_fuel < 60) {
-        fuel_clr = (Color) {250,250,50,255};
-    }
+    Color *fuel_clr = &FUEL_COLOR_GREEN;
+    if (player_fuel < 30)
+        fuel_clr = &FUEL_COLOR_RED;
+    else if (player_fuel < 60)
+        fuel_clr = &FUEL_COLOR_YELLOW;
 
     int fuel_meter_height = 95;
 
     // fuel meter
-    DrawRectangle(
-            30,
-            146  - (player_fuel/100) * fuel_meter_height,
-            18,
-            (player_fuel/100) * fuel_meter_height, fuel_clr);
+    DrawRectangle(30, 146  - (player_fuel/100) * fuel_meter_height,
+            18, (player_fuel/100) * fuel_meter_height, *fuel_clr);
 }
 
 void apply_gravity(m_ent *entity)
@@ -411,7 +390,7 @@ void handle_ent_collision(int *ent_ids[4])
     for (int i = 0 ; i < 4 ; i++)
     {
         ent *tile = &tiles[*ent_ids[i]];
-        if      (tile->type_id == ENT_COIN)
+        if (tile->type_id == ENT_COIN)
         {
             pickup_coin(tile);
             destroy_ent(tile);
@@ -535,7 +514,6 @@ Texture2D load_texture(const unsigned char *file_data, unsigned int data_size)
 
 void draw_coin_counter()
 {
-        char coin_text[100];
         strcpy(coin_text,"");
         sprintf(coin_text,"x%d",coins);
         DrawTextEx(minecraft_font,coin_text, (Vector2) {50.0f,280.0f}, 16, 4,WHITE);
@@ -551,19 +529,9 @@ void draw_game(Camera2D *camera, int game_tick)
     if (ply.alive)
     {
         if (!ply.inverted)
-            draw_texture(
-                    (ply.on_ground)
-                    ? ply.base.img
-                    : ply.falling_img,
-                    &ply.base.rect
-            );
+            draw_texture((ply.on_ground) ? ply.base.img : ply.falling_img, &ply.base.rect);
         else
-            draw_texture(
-                    (ply.on_ground)
-                    ? ply.img_invert
-                    : ply.falling_img_invert,
-                    &ply.base.rect
-            );
+            draw_texture((ply.on_ground) ? ply.img_invert : ply.falling_img_invert, &ply.base.rect);
     } else {
         // draw player ded
         draw_player_kill_texture(ply.falling_img,&ply.base.rect,-90.0f);
@@ -601,19 +569,32 @@ int main(void)
 	SetTargetFPS(60);
 
 	// Resources are loaded from memory
-    player_texture                = load_texture(res_player_base_png, res_player_base_png_len);
-    player_invert_texture         = load_texture(res_player_base_invert_png, res_player_base_invert_png_len);
-    player_falling_texture        = load_texture(res_player_falling_png, res_player_falling_png_len);
-    player_falling_invert_texture = load_texture(res_player_falling_invert_png, res_player_falling_invert_png_len);
-    map_tile_texture              = load_texture(res_map_tile_png, res_map_tile_png_len);
-    jetpack_particle_texture      = load_texture(res_jetpack_particle_png, res_jetpack_particle_png_len);
-    jetpack_meter_texture         = load_texture(res_jetpack_meter_png, res_jetpack_meter_png_len);
-    coin_texture                  = load_texture(res_coin_png, res_coin_png_len);
-    door_texture                  = load_texture(res_door_png, res_door_png_len);
-    key_texture                   = load_texture(res_key_png, res_key_png_len);
-    spikes_texture                = load_texture(res_spikes_png, res_spikes_png_len);
-    flag_texture                  = load_texture(res_flag_png, res_flag_png_len);
-    none_texture                  = load_texture(res_none_png, res_none_png_len);
+    player_texture                = load_texture(res_player_base_png,
+                                                  res_player_base_png_len);
+    player_invert_texture         = load_texture(res_player_base_invert_png,
+                                                  res_player_base_invert_png_len);
+    player_falling_texture        = load_texture(res_player_falling_png,
+                                                  res_player_falling_png_len);
+    player_falling_invert_texture = load_texture(res_player_falling_invert_png,
+                                                  res_player_falling_invert_png_len);
+    map_tile_texture              = load_texture(res_map_tile_png,
+                                                  res_map_tile_png_len);
+    jetpack_particle_texture      = load_texture(res_jetpack_particle_png,
+                                                  res_jetpack_particle_png_len);
+    jetpack_meter_texture         = load_texture(res_jetpack_meter_png,
+                                                  res_jetpack_meter_png_len);
+    coin_texture                  = load_texture(res_coin_png,
+                                                  res_coin_png_len);
+    door_texture                  = load_texture(res_door_png,
+                                                  res_door_png_len);
+    key_texture                   = load_texture(res_key_png,
+                                                  res_key_png_len);
+    spikes_texture                = load_texture(res_spikes_png,
+                                                  res_spikes_png_len);
+    flag_texture                  = load_texture(res_flag_png,
+                                                  res_flag_png_len);
+    none_texture                  = load_texture(res_none_png,
+                                                  res_none_png_len);
 
     minecraft_font = (Font) LoadFontFromMemory(".ttf", res_Minecraft_ttf, res_Minecraft_ttf_len, 32, NULL, 0);
 
@@ -623,7 +604,7 @@ int main(void)
         {20.0f,20.0f,2,10}, // left
         {20.0f,20.0f,12,2}, // down
         {20.0f,20.0f,12,2}, // top
-        {20.0f,20.0f,12,2},  // on_ground
+        {20.0f,20.0f,12,2}, // on_ground
         &player_invert_texture,
         &player_falling_texture,
         &player_falling_invert_texture,
