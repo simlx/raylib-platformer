@@ -4,5 +4,5 @@
 
 ## Build
 ### Windows
-gcc x86_64-w64-mingw32
+Open with Code::Blocks(GNU GCC MinGW64)
 
