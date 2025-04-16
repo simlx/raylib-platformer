@@ -1,0 +1,49 @@
+# depslib dependency file v1.0
+1744838016 source:c:\users\slx\desktop\mygame\raylib-platformer\src\main.c
+	"raylib.h"
+	<stdio.h>
+	<string.h>
+	"texture_coin.h"
+	"texture_door.h"
+	"texture_flag.h"
+	"texture_jetpack_meter.h"
+	"texture_jetpack_particle.h"
+	"texture_key.h"
+	"texture_map_tile.h"
+	"texture_none.h"
+	"texture_player_base.h"
+	"texture_player_base_invert.h"
+	"texture_player_falling.h"
+	"texture_player_falling_invert.h"
+	"texture_spikes.h"
+
+1744451489 c:\users\slx\desktop\mygame\raylib-platformer\include\raylib.h
+	<stdarg.h>
+	<stdbool.h>
+
+1744837718 c:\users\slx\desktop\mygame\raylib-platformer\include\texture_coin.h
+
+1744837718 c:\users\slx\desktop\mygame\raylib-platformer\include\texture_door.h
+
+1744837718 c:\users\slx\desktop\mygame\raylib-platformer\include\texture_flag.h
+
+1744837718 c:\users\slx\desktop\mygame\raylib-platformer\include\texture_jetpack_meter.h
+
+1744837718 c:\users\slx\desktop\mygame\raylib-platformer\include\texture_jetpack_particle.h
+
+1744837718 c:\users\slx\desktop\mygame\raylib-platformer\include\texture_key.h
+
+1744837718 c:\users\slx\desktop\mygame\raylib-platformer\include\texture_map_tile.h
+
+1744837718 c:\users\slx\desktop\mygame\raylib-platformer\include\texture_none.h
+
+1744837718 c:\users\slx\desktop\mygame\raylib-platformer\include\texture_player_base.h
+
+1744837718 c:\users\slx\desktop\mygame\raylib-platformer\include\texture_player_base_invert.h
+
+1744837718 c:\users\slx\desktop\mygame\raylib-platformer\include\texture_player_falling.h
+
+1744837718 c:\users\slx\desktop\mygame\raylib-platformer\include\texture_player_falling_invert.h
+
+1744837718 c:\users\slx\desktop\mygame\raylib-platformer\include\texture_spikes.h
+

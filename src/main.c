@@ -2,6 +2,22 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "texture_coin.h"
+#include "texture_door.h"
+#include "texture_flag.h"
+#include "texture_jetpack_meter.h"
+#include "texture_jetpack_particle.h"
+#include "texture_key.h"
+#include "texture_map_tile.h"
+#include "texture_none.h"
+#include "texture_player_base.h"
+#include "texture_player_base_invert.h"
+#include "texture_player_falling.h"
+#include "texture_player_falling_invert.h"
+#include "texture_spikes.h"
+
+#include "font_minecraft.h"
+
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 320
 
@@ -479,12 +495,10 @@ void apply_m_ent_collision(m_ent *e)
     if (!colliding_with_floor && !e->on_ground)
     {
         // Falling ->
-        //
         apply_gravity(e);
     } else
     {
         // Not Falling ->
-        //
         e->on_ground = true;
 
         while (colliding_with_floor) {
@@ -508,10 +522,11 @@ void apply_m_ent_collision(m_ent *e)
     e->base.rect.y += colliding_with_top ? PLAYER_SPEED -0.2 : 0;
 
 }
-// Load a texture from a file and replace MAGENTA with BLANK
-Texture2D load_texture(const char *path)
+
+// Load a texture from memory and replace MAGENTA with BLANK
+Texture2D load_texture(const unsigned char *file_data, unsigned int data_size)
 {
-    Image img = LoadImage(path);
+    Image img = LoadImageFromMemory(".png",file_data,data_size);
     ImageColorReplace(&img, MAGENTA, BLANK);
     Texture2D tex =  LoadTextureFromImage(img);
     UnloadImage(img);
@@ -585,21 +600,22 @@ int main(void)
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "mygame");
 	SetTargetFPS(60);
 
-    player_texture                = load_texture("res/player_base.png");
-    player_invert_texture         = load_texture("res/player_base_invert.png");
-    player_falling_texture        = load_texture("res/player_falling.png");
-    player_falling_invert_texture = load_texture("res/player_falling_invert.png");
-    map_tile_texture              = load_texture("res/map_tile.png");
-    jetpack_particle_texture      = load_texture("res/jetpack_particle.png");
-    jetpack_meter_texture         = load_texture("res/jetpack_meter.png");
-    coin_texture                  = load_texture("res/coin.png");
-    door_texture                  = load_texture("res/door.png");
-    key_texture                   = load_texture("res/key.png");
-    spikes_texture                = load_texture("res/spikes.png");
-    flag_texture                  = load_texture("res/flag.png");
-    none_texture                  = load_texture("res/none.png");
+	// Resources are loaded from memory
+    player_texture                = load_texture(res_player_base_png, res_player_base_png_len);
+    player_invert_texture         = load_texture(res_player_base_invert_png, res_player_base_invert_png_len);
+    player_falling_texture        = load_texture(res_player_falling_png, res_player_falling_png_len);
+    player_falling_invert_texture = load_texture(res_player_falling_invert_png, res_player_falling_invert_png_len);
+    map_tile_texture              = load_texture(res_map_tile_png, res_map_tile_png_len);
+    jetpack_particle_texture      = load_texture(res_jetpack_particle_png, res_jetpack_particle_png_len);
+    jetpack_meter_texture         = load_texture(res_jetpack_meter_png, res_jetpack_meter_png_len);
+    coin_texture                  = load_texture(res_coin_png, res_coin_png_len);
+    door_texture                  = load_texture(res_door_png, res_door_png_len);
+    key_texture                   = load_texture(res_key_png, res_key_png_len);
+    spikes_texture                = load_texture(res_spikes_png, res_spikes_png_len);
+    flag_texture                  = load_texture(res_flag_png, res_flag_png_len);
+    none_texture                  = load_texture(res_none_png, res_none_png_len);
 
-    minecraft_font = (Font) LoadFont("res/Minecraft.ttf");
+    minecraft_font = (Font) LoadFontFromMemory(".ttf", res_Minecraft_ttf, res_Minecraft_ttf_len, 32, NULL, 0);
 
     ply = (m_ent) {
         (ent) {&player_texture, {20.0f,20.0f,TILE_WIDTH,TILE_WIDTH}},
