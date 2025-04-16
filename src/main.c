@@ -24,6 +24,7 @@ typedef struct {
     int type_id;
 } ent; //entity
 
+
 typedef struct {
     ent base;
     Rectangle right_collision_rect; // Left Collision Detection
@@ -39,7 +40,7 @@ typedef struct {
     int walking_time;
     bool alive;
 } m_ent; //moving entity
-         
+
 typedef struct {
     ent base;
     int lifetime;
@@ -60,7 +61,7 @@ jetpack_particle jetpack_particles[30];
 int next_jetpack_particle_count = 0;
 
 Color background_color = {100,160,255,255}; //sky blue
-	
+
 Texture2D player_texture                ;
 Texture2D player_invert_texture         ;
 Texture2D player_falling_texture        ;
@@ -118,10 +119,13 @@ void player_jump()
 
 void register_input()
 {
+    if (IsKeyDown(KEY_ESCAPE))
+        CloseWindow();
+
     if (!ply.alive) return;
 
     if (IsKeyDown(KEY_RIGHT)) {
-        ply.base.rect.x += 
+        ply.base.rect.x +=
             (ply.walking_time > 15)
             ? PLAYER_SPEED
             : PLAYER_SPEED - (PLAYER_SPEED/2);
@@ -130,9 +134,9 @@ void register_input()
         ply.walking_time++;
     }
     else if (IsKeyDown(KEY_LEFT)) {
-        ply.base.rect.x -= 
-            (ply.walking_time > 15) 
-            ? PLAYER_SPEED 
+        ply.base.rect.x -=
+            (ply.walking_time > 15)
+            ? PLAYER_SPEED
             : PLAYER_SPEED - (PLAYER_SPEED/2);
 
         ply.inverted = true;
@@ -216,7 +220,7 @@ void initialize_jetpack()
 void draw_player_kill_texture(Texture2D *texture, Rectangle *rect, float rotation)
 {
     DrawTextureEx(
-            *texture, 
+            *texture,
             (Vector2) {rect->x, rect->y + 25},
             rotation,
             1.0f,
@@ -225,7 +229,7 @@ void draw_player_kill_texture(Texture2D *texture, Rectangle *rect, float rotatio
 void draw_texture_scaled(Texture2D *texture, Rectangle *rect, float scale)
 {
     DrawTextureEx(
-            *texture, 
+            *texture,
             (Vector2) {rect->x, rect->y},
             0.0f,
             scale,
@@ -234,7 +238,7 @@ void draw_texture_scaled(Texture2D *texture, Rectangle *rect, float scale)
 void draw_texture(Texture2D *texture, Rectangle *rect)
 {
     DrawTextureEx(
-            *texture, 
+            *texture,
             (Vector2) {rect->x, rect->y},
             0.0f,
             1.0f,
@@ -303,7 +307,7 @@ void update_jetpack_particles()
 
 void draw_world()
 {
-    for (int i = 0 ; i < TILES_NUM ; i++) 
+    for (int i = 0 ; i < TILES_NUM ; i++)
     {
         draw_texture(tiles[i].img, &tiles[i].rect);
     }
@@ -378,7 +382,7 @@ void pickup_coin(ent *coin)
 void pickup_key(ent *key)
 {
     key->rect.x = -999;
-    key->rect.y = -999;   
+    key->rect.y = -999;
 }
 
 void kill_player()
@@ -401,7 +405,7 @@ void handle_ent_collision(int *ent_ids[4])
             key_collected = true;
             pickup_key(tile);
             destroy_ent(tile);
-        } 
+        }
         else if (tile->type_id == ENT_DOOR)
         {
             if (key_collected)
@@ -470,14 +474,14 @@ void apply_m_ent_collision(m_ent *e)
 
     // If on ground, start falling when no on_ground detector rect collision
     if (e->on_ground)
-        e->on_ground = colliding_with_on_ground;   
+        e->on_ground = colliding_with_on_ground;
 
     if (!colliding_with_floor && !e->on_ground)
     {
         // Falling ->
         //
         apply_gravity(e);
-    } else    
+    } else
     {
         // Not Falling ->
         //
@@ -493,7 +497,7 @@ void apply_m_ent_collision(m_ent *e)
             );
         }
     }
- 
+
     if (e->walking_time > 15) {
         e->base.rect.x += colliding_with_left ? PLAYER_SPEED : 0;
         e->base.rect.x -= colliding_with_right ? PLAYER_SPEED : 0;
@@ -539,9 +543,9 @@ void draw_game(Camera2D *camera, int game_tick)
                     &ply.base.rect
             );
         else
-            draw_texture( 
-                    (ply.on_ground) 
-                    ? ply.img_invert 
+            draw_texture(
+                    (ply.on_ground)
+                    ? ply.img_invert
                     : ply.falling_img_invert,
                     &ply.base.rect
             );
@@ -549,11 +553,11 @@ void draw_game(Camera2D *camera, int game_tick)
         // draw player ded
         draw_player_kill_texture(ply.falling_img,&ply.base.rect,-90.0f);
     }
-    
+
     draw_world();
     draw_jetpack_particles();
 
-    #ifdef DEBUG_PLAYER_COLLISIONS   
+    #ifdef DEBUG_PLAYER_COLLISIONS
         Color debug_clr = (Color) {255,0,255,100};
         DrawRectangleRec(ply.left_collision_rect, debug_clr);
         DrawRectangleRec(ply.right_collision_rect, debug_clr);
@@ -575,13 +579,12 @@ void draw_game(Camera2D *camera, int game_tick)
     EndDrawing();
 }
 
-
 int main(void)
 {
     // INIT
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "mygame");
 	SetTargetFPS(60);
-	
+
     player_texture                = load_texture("res/player_base.png");
     player_invert_texture         = load_texture("res/player_base_invert.png");
     player_falling_texture        = load_texture("res/player_falling.png");
@@ -598,7 +601,7 @@ int main(void)
 
     minecraft_font = (Font) LoadFont("res/Minecraft.ttf");
 
-    ply = (m_ent) { 
+    ply = (m_ent) {
         (ent) {&player_texture, {20.0f,20.0f,TILE_WIDTH,TILE_WIDTH}},
         {20.0f,20.0f,2,10}, // right
         {20.0f,20.0f,2,10}, // left
@@ -617,7 +620,7 @@ int main(void)
     create_world(&map_tile_texture);
     initialize_jetpack(&jetpack_particle_texture);
     counter_coin = (ent) {&coin_texture, {10,260,16,16}};
-    
+
     Camera2D camera = { 0 };
     camera.target = (Vector2){ply.base.rect.x,ply.base.rect.y};
     camera.offset = (Vector2){SCREEN_WIDTH/2, SCREEN_HEIGHT/2};
