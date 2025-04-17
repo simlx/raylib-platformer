@@ -67,6 +67,9 @@ bool key_collected = false;
 int player_frametime = 0;
 int player_frame;
 
+bool game_over = false;
+bool game_win = false;
+
 m_ent ply;
 ent counter_coin;
 
@@ -116,21 +119,21 @@ Texture2D player_texture_anim_invert        ;
 // 7 == Elevator
 // 9 == Flag
 int level[] = { // 40 x 15
-1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-1,_,_,_,_,_,2,2,2,2,_,1,1,1,_,2,2,2,2,_,_,_,_,_,3,1,2,2,2,_,_,_,_,_,_,_,_,_,_,_,
-1,_,_,_,_,_,_,_,_,_,_,1,1,1,_,2,2,2,2,_,_,_,1,1,1,1,2,2,2,_,_,_,_,_,_,9,_,_,_,_,
-1,1,1,1,1,1,1,1,1,1,_,1,1,1,_,2,2,2,2,_,_,1,1,_,_,_,2,2,2,_,_,1,1,1,1,1,1,_,_,_,
-_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,1,_,_,_,_,_,_,_,_,1,1,1,_,_,_,_,_,_,_,
-_,1,_,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,
-_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,4,_,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,1,1,1,_,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,_,_,_,_,_,2,2,2,2,_,1,1,1,_,2,2,2,2,_,_,_,_,_,3,1,2,2,2,_,_,_,_,_,_,_,_,_,_,1,
+1,_,_,_,_,_,_,_,_,_,_,1,1,1,_,2,2,2,2,_,_,_,1,1,1,1,2,2,2,_,_,5,_,_,5,_,_,5,_,1,
+1,1,1,1,1,1,1,1,1,1,_,1,1,1,_,2,2,2,2,_,_,1,1,_,_,_,2,2,2,_,_,1,1,1,1,1,1,1,_,1,
+1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,1,_,_,_,_,_,_,_,_,1,1,1,_,_,_,_,_,_,1,
+1,1,_,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,1,1,1,1,1,1,1,1,1,_,1,5,5,5,1,1,
+1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,1,1,1,1,_,_,_,_,_,_,_,1,1,1,1,1,1,
+1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,4,_,1,1,1,1,1,3,5,1,1,1,_,_,_,4,4,_,_,1,
+1,_,_,1,_,_,_,_,_,_,_,_,_,_,_,1,1,1,_,1,1,1,1,1,1,1,1,1,1,1,_,_,_,1,1,1,1,1,_,1,
+1,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,3,_,_,_,_,_,_,_,_,_,_,_,1,1,_,_,_,_,_,1,
+1,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,1,1,5,_,_,_,_,_,1,1,1,1,1,1,_,1,1,1,1,1,
+1,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,9,_,1,5,5,5,5,5,2,_,_,_,_,_,_,_,2,2,2,1,
+1,_,_,1,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,1,1,_,1,1,1,1,1,1,2,_,_,_,_,_,_,_,2,2,2,1,
+1,_,_,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,5,5,5,_,_,5,5,2,2,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 };
 void register_input()
 {
@@ -237,7 +240,10 @@ void draw_texture_scaled(Texture2D *texture, Rectangle *rect, float scale)
 }
 void draw_texture(Texture2D *texture, Rectangle *rect)
 {
-    DrawTextureEx(*texture, (Vector2) {rect->x, rect->y}, 0.0f, 1.0f, WHITE);
+    if (!game_win)
+        DrawTextureEx(*texture, (Vector2) {rect->x, rect->y}, 0.0f, 1.0f, WHITE);
+    else
+        DrawTextureEx(*texture, (Vector2) {rect->x, rect->y}, game_tick, 1.0f, WHITE);
 }
 void draw_texture_frame(Texture2D *texture, Rectangle *rect, int frame)
 {
@@ -351,6 +357,8 @@ void destroy_ent(ent *entity)
 }
 void touch_flag(ent *flag)
 {
+    game_win = true;
+    game_over = true;
     ply.base.rect.x = 1000;
 }
 void pickup_coin(ent *coin)
@@ -377,12 +385,19 @@ void handle_ent_collision(short *ent_ids[4])
                 destroy_ent(tile);
             break;
             case ENT_KEY:
-                key_collected = true;
-                pickup_key(tile);
-                destroy_ent(tile);
+                if (!key_collected)
+                {
+                    key_collected = true;
+                    pickup_key(tile);
+                    destroy_ent(tile);
+                }
             break;
             case ENT_DOOR:
-                if (key_collected) destroy_ent(tile);
+                if (key_collected)
+                {
+                    destroy_ent(tile);
+                    key_collected = false;
+                }
             break;
             case ENT_FLAG:
                 touch_flag(tile);
@@ -471,12 +486,19 @@ Texture2D load_texture(const unsigned char *file_data, unsigned int data_size)
     UnloadImage(img);
     return tex;
 }
-
+void draw_lose()
+{
+}
+void draw_win()
+{
+    DrawTextEx(minecraft_font,"LEVEL 1 COMPLETED", (Vector2) {220.0f,120.0f}, 16, 4,WHITE);
+    DrawTextEx(minecraft_font,"YOU WIN!", (Vector2) {290.0f,140.0f}, 16, 4,WHITE);
+}
 void draw_coin_counter()
 {
-        strcpy(coin_text,"");
-        sprintf(coin_text,"x%d",coins);
-        DrawTextEx(minecraft_font,coin_text, (Vector2) {50.0f,280.0f}, 16, 4,WHITE);
+    strcpy(coin_text,"");
+    sprintf(coin_text,"x%d",coins);
+    DrawTextEx(minecraft_font,coin_text, (Vector2) {50.0f,280.0f}, 16, 4,WHITE);
 }
 
 void update_player()
@@ -527,6 +549,7 @@ void draw_game(Camera2D *camera, int game_tick)
 
     draw_world();
 
+
     if (ply.alive)
         draw_player();
     else
@@ -549,6 +572,15 @@ void draw_game(Camera2D *camera, int game_tick)
     draw_texture_scaled(counter_coin.img, &counter_coin.rect,3.0f);
     draw_coin_counter();
 
+    if (game_over)
+    {
+        if (game_win) {
+            draw_win();
+        } else {
+            draw_lose();
+        }
+    }
+
     if (game_tick < 30) ClearBackground(BLUE);
 
     EndDrawing();
@@ -570,7 +602,7 @@ void update_game()
 int main(void)
 {
 
-	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "mygame");
+	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "mygame.exe");
 	SetTargetFPS(60);
 
 	// Resources are loaded from memory
