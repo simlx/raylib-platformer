@@ -111,6 +111,7 @@ Texture2D player_texture_anim_invert        ;
 #define ENT_SPIKES  5
 #define ENT_FLAG    9
 #define _ 0
+
 // map tile ids:
 // 1 == Wall
 // 2 == Coin
@@ -572,14 +573,7 @@ void draw_game(Camera2D *camera, int game_tick)
     draw_texture_scaled(counter_coin.img, &counter_coin.rect,3.0f);
     draw_coin_counter();
 
-    if (game_over)
-    {
-        if (game_win) {
-            draw_win();
-        } else {
-            draw_lose();
-        }
-    }
+    if (game_over && game_win) draw_win();
 
     if (game_tick < 30) ClearBackground(BLUE);
 
@@ -602,7 +596,7 @@ void update_game()
 int main(void)
 {
 
-	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "mygame.exe");
+	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "jetpack jumper (github.com/simlx/raylib-platformer)");
 	SetTargetFPS(60);
 
 	// Resources are loaded from memory
