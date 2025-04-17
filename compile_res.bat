@@ -14,5 +14,8 @@ xxd -i res\player_falling.png       > include\texture_player_falling.h
 xxd -i res\player_falling_invert.png> include\texture_player_falling_invert.h
 xxd -i res\spikes.png               > include\texture_spikes.h
 
+xxd -i res\player.png               > include\texture_player.h
+xxd -i res\player_invert.png        > include\texture_player_invert.h
+
 xxd -i res\Minecraft.ttf            > include\font_minecraft.h
 
