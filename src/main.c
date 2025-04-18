@@ -60,9 +60,19 @@ typedef struct {
     bool alive;
 } jetpack_particle;
 
+typedef struct {
+    int x;
+    int y;
+    int lifetime;
+    bool alive;
+} coin_add_text;
+
 float player_fuel = 99.9f;
+
 short coins = 0;
 char coin_text[100];
+coin_add_text coin_add_texts[10];
+
 bool key_collected = false;
 int player_frametime = 0;
 int player_frame;
@@ -141,21 +151,17 @@ void register_input()
 
     if (!ply.alive) return;
 
-    // Store if the player is walking fast enough
-    bool walking_fast = ply.walking_time > 55;
-
     // Handle movement based on key presses
     if (key_right || key_left)
     {
-        int movement_speed = walking_fast ? PLAYER_SPEED : PLAYER_SPEED - (PLAYER_SPEED / 2);
         if (key_right)
         {
-            ply.base.rect.x += movement_speed;
+            ply.base.rect.x += PLAYER_SPEED;
             ply.inverted = false;
         }
         if (key_left)
         {
-            ply.base.rect.x -= movement_speed;
+            ply.base.rect.x -= PLAYER_SPEED;
             ply.inverted = true;
         }
         ply.walking_time++;
@@ -246,6 +252,25 @@ void draw_texture_frame(Texture2D *texture, Rectangle *rect, int frame)
 {
     DrawTextureRec(*texture,(Rectangle) {16*frame,0,16,16}, (Vector2) {rect->x, rect->y}, WHITE);
 }
+
+void create_coin_pickup_text(int x, int y)
+{
+    for( int i = 0 ; i < 10 ; i++)
+    {
+        coin_add_text *ctext = &coin_add_texts[i];
+        if (!ctext->alive)
+        {
+            ctext->alive = true;
+            ctext->lifetime = 0;
+            ctext->x = x;
+            ctext->y = y;
+            return;
+        }
+    }
+}
+
+
+
 void draw_jetpack_particles()
 {
     for (int i = 0 ; i < 30 ; i++)
@@ -361,6 +386,7 @@ void touch_flag(ent *flag)
 void pickup_coin(ent *coin)
 {
     coins++;
+    create_coin_pickup_text((int)coin->rect.x, (int)coin->rect.y);
 }
 void pickup_key(ent *key)
 {
@@ -501,6 +527,48 @@ void draw_coin_counter()
     sprintf(coin_text,"x%d",coins);
     DrawTextEx(minecraft_font,coin_text, (Vector2) {50.0f,280.0f}, 16, 4,WHITE);
 }
+void draw_spinning_key()
+{
+    DrawTexturePro
+        (
+            key_texture,
+            (Rectangle) {0,0,key_texture.width,key_texture.height},
+            (Rectangle) {35,240,key_texture.width*2,key_texture.height*2},
+            (Vector2) {key_texture.width,key_texture.height} ,
+            game_tick,
+            WHITE
+        );
+}
+void update_coin_pickup_text()
+{
+    for( int i = 0 ; i < 10 ; i++)
+    {
+        coin_add_text *ctext = &coin_add_texts[i];
+        if (ctext->alive) 
+        {
+            ctext->lifetime++;
+            if (ctext->lifetime % 2 == 0) ctext->y-=1;
+            if (ctext->lifetime > 30)
+            {
+                ctext->alive = false;
+            }
+        }
+    }
+}
+void draw_coin_pickup_text()
+{
+    for( int i = 0 ; i < 10 ; i++)
+    {
+        coin_add_text *ctext = &coin_add_texts[i];
+        if (ctext->alive)
+        {
+            DrawTextEx(minecraft_font,"+1",
+                    (Vector2) {ctext->x - 10 + 0.5f,ctext->y + 0.5}, 9, 4,BLACK);
+            DrawTextEx(minecraft_font,"+1",
+                    (Vector2) {ctext->x - 10,ctext->y}, 9, 4,YELLOW);
+        }
+    }
+}
 
 void update_player()
 {
@@ -518,10 +586,7 @@ void update_player()
             ply.base.img = &player_falling_invert_texture;
 
     player_frametime+=12;
-    if (player_frametime > 298)
-    {
-        player_frametime = 1;
-    }
+    if (player_frametime > 298) player_frametime = 1;
     player_frame = player_frametime / 100;
 }
 
@@ -533,49 +598,48 @@ void draw_ent(ent *entity)
 
 void draw_player()
 {
-    if (ply.on_ground && ply.walking_time > 0)
-        if (ply.inverted)
-            draw_texture_frame(&player_texture_anim_invert, &ply.base.rect, player_frame);
-        else
-            draw_texture_frame(&player_texture_anim, &ply.base.rect, player_frame);
-    else draw_ent(&ply.base);
+    if (ply.alive)
+        if (ply.on_ground && ply.walking_time > 0)
+            if (ply.inverted)
+                draw_texture_frame(&player_texture_anim_invert, &ply.base.rect, player_frame);
+            else
+                draw_texture_frame(&player_texture_anim, &ply.base.rect, player_frame);
+        else draw_ent(&ply.base);
+    else
+        draw_player_kill_texture(ply.base.img,&ply.base.rect,-90.0f);
 }
 
 void draw_game(Camera2D *camera, int game_tick)
 {
     BeginDrawing();
-    ClearBackground(background_color);
+        ClearBackground(background_color);
 
-    BeginMode2D(*camera);
+        BeginMode2D(*camera);
 
-    draw_world();
+            draw_world();
+            draw_player();
+            draw_jetpack_particles();
+            draw_coin_pickup_text();
 
+            #ifdef DEBUG_PLAYER_COLLISIONS
+                Color debug_clr = (Color) {255,0,255,100};
+                DrawRectangleRec(ply.left_collision_rect, debug_clr);
+                DrawRectangleRec(ply.right_collision_rect, debug_clr);
+                DrawRectangleRec(ply.down_collision_rect, debug_clr);
+                DrawRectangleRec(ply.top_collision_rect, debug_clr);
+                DrawRectangleRec(ply.on_ground_collision_rect, debug_clr);
+            #endif
 
-    if (ply.alive)
-        draw_player();
-    else
-        draw_player_kill_texture(ply.base.img,&ply.base.rect,-90.0f);
+        EndMode2D();
 
-    draw_jetpack_particles();
+        draw_jetpack_meter();
+        draw_texture_scaled(counter_coin.img, &counter_coin.rect,3.0f);
+        draw_coin_counter();
+        draw_spinning_key();
 
-    #ifdef DEBUG_PLAYER_COLLISIONS
-        Color debug_clr = (Color) {255,0,255,100};
-        DrawRectangleRec(ply.left_collision_rect, debug_clr);
-        DrawRectangleRec(ply.right_collision_rect, debug_clr);
-        DrawRectangleRec(ply.down_collision_rect, debug_clr);
-        DrawRectangleRec(ply.top_collision_rect, debug_clr);
-        DrawRectangleRec(ply.on_ground_collision_rect, debug_clr);
-    #endif
+        if (game_over && game_win) draw_win();
 
-    EndMode2D();
-
-    draw_jetpack_meter();
-    draw_texture_scaled(counter_coin.img, &counter_coin.rect,3.0f);
-    draw_coin_counter();
-
-    if (game_over && game_win) draw_win();
-
-    if (game_tick < 30) ClearBackground(BLUE);
+        if (game_tick < 30) ClearBackground(BLUE);
 
     EndDrawing();
 }
@@ -590,6 +654,7 @@ void update_game()
         update_m_ent(&ply);
         update_jetpack_particles();
         apply_m_ent_collision(&ply);
+        update_coin_pickup_text();
     }
 }
 
@@ -675,6 +740,8 @@ int main(void)
     UnloadTexture(player_invert_texture);
     UnloadTexture(player_falling_texture);
     UnloadTexture(player_falling_invert_texture);
+    UnloadTexture(player_texture_anim);
+    UnloadTexture(player_texture_anim_invert);
     UnloadTexture(map_tile_texture);
     UnloadTexture(jetpack_particle_texture);
     UnloadTexture(jetpack_meter_texture);
