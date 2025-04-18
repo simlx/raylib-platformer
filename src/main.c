@@ -563,8 +563,6 @@ void draw_coin_pickup_text()
         if (ctext->alive)
         {
             DrawTextEx(minecraft_font,"+1",
-                    (Vector2) {ctext->x - 10 + 0.5f,ctext->y + 0.5}, 9, 4,BLACK);
-            DrawTextEx(minecraft_font,"+1",
                     (Vector2) {ctext->x - 10,ctext->y}, 9, 4,YELLOW);
         }
     }
