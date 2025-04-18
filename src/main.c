@@ -131,8 +131,6 @@ int level_1[] = { // 40 x 15
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 };
 
-
-
 void register_input()
 {
     if (IsKeyDown(KEY_ESCAPE)) { CloseWindow(); }
@@ -182,7 +180,7 @@ void register_input()
 }
 
 // Load the level into tiles
-void load_level()
+void load_level(int leveldata[])
 {
     int x,y = 0;
     int spacing = TILE_WIDTH;
@@ -190,7 +188,7 @@ void load_level()
     for (int i = 0; i < TILES_NUM; i++)
     {
         ent *tile = &tiles[i];
-        int type = level_1[x + (y * 40)];
+        int type = leveldata[x + (y * 40)];
 
         tile->img = (type == 0) ? &none_texture :
                     (type == 1) ? &map_tile_texture :
@@ -422,12 +420,16 @@ void apply_m_ent_collision(m_ent *e)
 
         if (floor_collision_tile == -1 && CheckCollisionRecs(e->down_collision_rect, *tile_rect))
             floor_collision_tile = i;
+
         if (left_collision_tile == -1 && CheckCollisionRecs(e->left_collision_rect, *tile_rect))
             left_collision_tile = i;
+
         if (right_collision_tile == -1 && CheckCollisionRecs(e->right_collision_rect, *tile_rect))
             right_collision_tile = i;
+
         if (top_collision_tile == -1 && CheckCollisionRecs(e->top_collision_rect, *tile_rect))
             top_collision_tile = i;
+
         if (!colliding_with_on_ground)
             colliding_with_on_ground = CheckCollisionRecs(e->on_ground_collision_rect, *tile_rect);
     }
@@ -647,7 +649,7 @@ int main(void)
         true    // alive
     };
 
-    load_level();
+    load_level(level_1);
     initialize_jetpack();
 
     counter_coin = (ent) {&coin_texture, {10,260,16,16}};
