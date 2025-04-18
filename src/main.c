@@ -105,21 +105,15 @@ Texture2D none_texture                      ;
 Texture2D player_texture_anim               ;
 Texture2D player_texture_anim_invert        ;
 
+
+#define ENT_WALL    1
 #define ENT_COIN    2
 #define ENT_KEY     3
 #define ENT_DOOR    4
 #define ENT_SPIKES  5
 #define ENT_FLAG    9
 #define _ 0
-
-// map tile ids:
-// 1 == Wall
-// 2 == Coin
-// 3 == Key
-// 4 == Door
-// 7 == Elevator
-// 9 == Flag
-int level[] = { // 40 x 15
+int level_1[] = { // 40 x 15
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 1,_,_,_,_,_,2,2,2,2,_,1,1,1,_,2,2,2,2,_,_,_,_,_,3,1,2,2,2,_,_,_,_,_,_,_,_,_,_,1,
 1,_,_,_,_,_,_,_,_,_,_,1,1,1,_,2,2,2,2,_,_,_,1,1,1,1,2,2,2,_,_,5,_,_,5,_,_,5,_,1,
@@ -136,6 +130,9 @@ int level[] = { // 40 x 15
 1,_,_,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,5,5,5,_,_,5,5,2,2,1,
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 };
+
+
+
 void register_input()
 {
     if (IsKeyDown(KEY_ESCAPE)) { CloseWindow(); }
@@ -183,8 +180,9 @@ void register_input()
         player_fuel += 0.80f;
     }
 }
+
 // Load the level into tiles
-void create_world()
+void load_level()
 {
     int x,y = 0;
     int spacing = TILE_WIDTH;
@@ -192,7 +190,7 @@ void create_world()
     for (int i = 0; i < TILES_NUM; i++)
     {
         ent *tile = &tiles[i];
-        int type = level[x + (y * 40)];
+        int type = level_1[x + (y * 40)];
 
         tile->img = (type == 0) ? &none_texture :
                     (type == 1) ? &map_tile_texture :
@@ -649,8 +647,8 @@ int main(void)
         true    // alive
     };
 
-    create_world(&map_tile_texture);
-    initialize_jetpack(&jetpack_particle_texture);
+    load_level();
+    initialize_jetpack();
 
     counter_coin = (ent) {&coin_texture, {10,260,16,16}};
 
