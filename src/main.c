@@ -27,6 +27,7 @@
 #include "sound_win.h"
 #include "sound_dead.h"
 
+
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 320
 
@@ -37,6 +38,7 @@
 #define TILE_WIDTH 16
 
 #define GAME_SCALE 3
+#define GAME_START_TICK 30
 //#define DEBUG_PLAYER_COLLISIONS
 
 // basic entity
@@ -136,6 +138,7 @@ Sound dead_sound                             ;
 #define ENT_SPIKES  5
 #define ENT_FLAG    9
 #define _ 0
+
 int level_1[] = { // 40 x 15
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 1,_,_,_,_,_,2,2,2,2,_,1,1,1,_,2,2,2,2,_,_,_,_,_,3,1,2,2,2,_,_,_,_,_,_,_,_,_,_,1,
@@ -178,10 +181,7 @@ void register_input()
             ply.inverted = true;
         }
 
-        if (ply.on_ground && ply.walking_time % 25 == 0)
-        {
-            PlaySound(step_sound);
-        }
+        if (ply.on_ground && ply.walking_time % 25 == 0) PlaySound(step_sound);
 
         ply.walking_time++;
     }
@@ -290,8 +290,6 @@ void create_coin_pickup_text(int x, int y)
     }
 }
 
-
-
 void draw_jetpack_particles()
 {
     for (int i = 0 ; i < 30 ; i++)
@@ -334,10 +332,7 @@ void update_jetpack_particles()
             jp->base.rect.y += r2 * ((40 - jp->lifetime)/15);
             jp->lifetime++;
 
-            if (jp->lifetime > 20)
-            {
-                destroy_jetpack_particle(jp);
-            }
+            if (jp->lifetime > 20) destroy_jetpack_particle(jp);
         }
         else
         {
@@ -370,8 +365,7 @@ void draw_jetpack_meter()
     int fuel_meter_height = 95;
 
     // fuel meter
-    DrawRectangle(30, 146  - (player_fuel/100) * fuel_meter_height,
-            18, (player_fuel/100) * fuel_meter_height, *fuel_clr);
+    DrawRectangle(30, 146  - (player_fuel/100) * fuel_meter_height, 18, (player_fuel/100) * fuel_meter_height, *fuel_clr);
 }
 void apply_gravity(m_ent *entity)
 {
@@ -469,21 +463,11 @@ void apply_m_ent_collision(m_ent *e)
     for (int i = 0 ; i < TILES_NUM ; i++)
     {
         Rectangle *tile_rect = &tiles[i].rect;
-
-        if (floor_collision_tile == -1 && CheckCollisionRecs(e->down_collision_rect, *tile_rect))
-            floor_collision_tile = i;
-
-        if (left_collision_tile == -1 && CheckCollisionRecs(e->left_collision_rect, *tile_rect))
-            left_collision_tile = i;
-
-        if (right_collision_tile == -1 && CheckCollisionRecs(e->right_collision_rect, *tile_rect))
-            right_collision_tile = i;
-
-        if (top_collision_tile == -1 && CheckCollisionRecs(e->top_collision_rect, *tile_rect))
-            top_collision_tile = i;
-
-        if (!colliding_with_on_ground)
-            colliding_with_on_ground = CheckCollisionRecs(e->on_ground_collision_rect, *tile_rect);
+        if (floor_collision_tile == -1 && CheckCollisionRecs(e->down_collision_rect, *tile_rect))   floor_collision_tile = i;
+        if (left_collision_tile == -1 && CheckCollisionRecs(e->left_collision_rect, *tile_rect))    left_collision_tile = i;
+        if (right_collision_tile == -1 && CheckCollisionRecs(e->right_collision_rect, *tile_rect))  right_collision_tile = i;
+        if (top_collision_tile == -1 && CheckCollisionRecs(e->top_collision_rect, *tile_rect))      top_collision_tile = i;
+        if (!colliding_with_on_ground) colliding_with_on_ground = CheckCollisionRecs(e->on_ground_collision_rect, *tile_rect);
     }
 
     bool colliding_with_floor   = (floor_collision_tile != -1);
@@ -517,11 +501,7 @@ void apply_m_ent_collision(m_ent *e)
         {
             e->base.rect.y -= 0.01;
             update_m_ent(e);
-
-            colliding_with_floor = CheckCollisionRecs(
-                    e->down_collision_rect,
-                    tiles[floor_collision_tile].rect
-            );
+            colliding_with_floor = CheckCollisionRecs(e->down_collision_rect,tiles[floor_collision_tile].rect);
         }
     }
 
@@ -532,7 +512,6 @@ void apply_m_ent_collision(m_ent *e)
 
 Sound load_sound(const unsigned char *file_data, unsigned int data_size)
 {
-    
     Wave wav = LoadWaveFromMemory(".wav", file_data, data_size);
     Sound snd = LoadSoundFromWave(wav);
     UnloadWave(wav);
@@ -583,10 +562,7 @@ void update_coin_pickup_text()
         {
             ctext->lifetime++;
             if (ctext->lifetime % 2 == 0) ctext->y-=1;
-            if (ctext->lifetime > 30)
-            {
-                ctext->alive = false;
-            }
+            if (ctext->lifetime > 30) ctext->alive = false;
         }
     }
 }
@@ -595,11 +571,7 @@ void draw_coin_pickup_text()
     for( int i = 0 ; i < 10 ; i++)
     {
         coin_add_text *ctext = &coin_add_texts[i];
-        if (ctext->alive)
-        {
-            DrawTextEx(minecraft_font,"+1",
-                    (Vector2) {ctext->x - 10,ctext->y}, 9, 4,YELLOW);
-        }
+        if (ctext->alive) DrawTextEx(minecraft_font, "+1", (Vector2) {ctext->x - 10,ctext->y}, 9, 4, YELLOW);
     }
 }
 
@@ -669,11 +641,9 @@ void draw_game(Camera2D *camera, int game_tick)
         draw_texture_scaled(counter_coin.img, &counter_coin.rect,GAME_SCALE);
         draw_coin_counter();
 
-        if (key_collected) draw_spinning_key();
-
-        if (game_over && game_win) draw_win();
-
-        if (game_tick < 30) ClearBackground(BLUE);
+        if (key_collected)                  draw_spinning_key();
+        if (game_over && game_win)          draw_win();
+        if (game_tick < GAME_START_TICK)    ClearBackground(BLUE);
 
     EndDrawing();
 }
@@ -681,9 +651,9 @@ void draw_game(Camera2D *camera, int game_tick)
 void update_game()
 {
     // Wait for the rendering to load before starting the game
-    if (game_tick > 30)
+    if (game_tick > GAME_START_TICK)
     {
-        camera.target = (Vector2){ply.base.rect.x,ply.base.rect.y};
+        camera.target = (Vector2) {ply.base.rect.x,ply.base.rect.y};
         update_player();
         update_m_ent(&ply);
         update_jetpack_particles();
@@ -692,95 +662,39 @@ void update_game()
     }
 }
 
-int main(void)
+void load_resources()
 {
+    // load textures
+    player_texture                = load_texture(res_player_base_png,           res_player_base_png_len);
+    player_invert_texture         = load_texture(res_player_base_invert_png,    res_player_base_invert_png_len);
+    player_falling_texture        = load_texture(res_player_falling_png,        res_player_falling_png_len);
+    player_falling_invert_texture = load_texture(res_player_falling_invert_png, res_player_falling_invert_png_len);
+    map_tile_texture              = load_texture(res_map_tile_png,              res_map_tile_png_len);
+    jetpack_particle_texture      = load_texture(res_jetpack_particle_png,      res_jetpack_particle_png_len);
+    jetpack_meter_texture         = load_texture(res_jetpack_meter_png,         res_jetpack_meter_png_len);
+    coin_texture                  = load_texture(res_coin_png,                  res_coin_png_len);
+    door_texture                  = load_texture(res_door_png,                  res_door_png_len);
+    key_texture                   = load_texture(res_key_png,                   res_key_png_len);
+    spikes_texture                = load_texture(res_spikes_png,                res_spikes_png_len);
+    flag_texture                  = load_texture(res_flag_png,                  res_flag_png_len);
+    none_texture                  = load_texture(res_none_png,                  res_none_png_len);
+    player_texture_anim           = load_texture(res_player_png,                res_player_png_len);
+    player_texture_anim_invert    = load_texture(res_player_invert_png,         res_player_invert_png_len);
 
-	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "jetpack jumper (github.com/simlx/raylib-platformer)");
-    InitAudioDevice();
+    // load font
+    minecraft_font = (Font) LoadFontFromMemory(".ttf", res_Minecraft_ttf, res_Minecraft_ttf_len, 32, NULL, 0);
 
-	SetTargetFPS(60);
+    // load sounds
+    step_sound                    = load_sound(res_sfxr_step_wav,               res_sfxr_step_wav_len);
+    jetpack_sound                 = load_sound(res_sfxr_jetpack_wav,            res_sfxr_jetpack_wav_len);
+    door_open_sound               = load_sound(res_sfxr_door_open_wav,          res_sfxr_door_open_wav_len);
+    win_sound                     = load_sound(res_sfxr_win_wav,                res_sfxr_win_wav_len);
+    pickup_coin_sound             = load_sound(res_sfxr_pickup_coin_wav,        res_sfxr_pickup_coin_wav_len);
+    dead_sound                    = load_sound(res_sfxr_dead_wav,               res_sfxr_dead_wav_len);
+}
 
-	// Resources are loaded from memory
-    player_texture                = load_texture(res_player_base_png,
-                                                  res_player_base_png_len);
-    player_invert_texture         = load_texture(res_player_base_invert_png,
-                                                  res_player_base_invert_png_len);
-    player_falling_texture        = load_texture(res_player_falling_png,
-                                                  res_player_falling_png_len);
-    player_falling_invert_texture = load_texture(res_player_falling_invert_png,
-                                                  res_player_falling_invert_png_len);
-    map_tile_texture              = load_texture(res_map_tile_png,
-                                                  res_map_tile_png_len);
-    jetpack_particle_texture      = load_texture(res_jetpack_particle_png,
-                                                  res_jetpack_particle_png_len);
-    jetpack_meter_texture         = load_texture(res_jetpack_meter_png,
-                                                  res_jetpack_meter_png_len);
-    coin_texture                  = load_texture(res_coin_png,
-                                                  res_coin_png_len);
-    door_texture                  = load_texture(res_door_png,
-                                                  res_door_png_len);
-    key_texture                   = load_texture(res_key_png,
-                                                  res_key_png_len);
-    spikes_texture                = load_texture(res_spikes_png,
-                                                  res_spikes_png_len);
-    flag_texture                  = load_texture(res_flag_png,
-                                                  res_flag_png_len);
-    none_texture                  = load_texture(res_none_png,
-                                                  res_none_png_len);
-    player_texture_anim           = load_texture(res_player_png,
-                                                  res_player_png_len);
-    player_texture_anim_invert    = load_texture(res_player_invert_png,
-                                                  res_player_invert_png_len);
-
-    minecraft_font = (Font) LoadFontFromMemory(".ttf",
-                                               res_Minecraft_ttf,
-                                               res_Minecraft_ttf_len,
-                                               32, NULL, 0);
-
-    step_sound      = load_sound(res_sfxr_step_wav, res_sfxr_step_wav_len);
-    jetpack_sound   = load_sound(res_sfxr_jetpack_wav, res_sfxr_jetpack_wav_len);
-    door_open_sound   = load_sound(res_sfxr_door_open_wav, res_sfxr_door_open_wav_len);
-    win_sound   = load_sound(res_sfxr_win_wav, res_sfxr_win_wav_len);
-    pickup_coin_sound   = load_sound(res_sfxr_pickup_coin_wav, res_sfxr_pickup_coin_wav_len);
-    dead_sound   = load_sound(res_sfxr_dead_wav, res_sfxr_dead_wav_len);
-
-
-
-    ply = (m_ent) {
-        (ent) {&player_texture, {20.0f,20.0f,TILE_WIDTH,TILE_WIDTH}},
-        {20.0f,20.0f,2,10}, // right
-        {20.0f,20.0f,2,10}, // left
-        {20.0f,20.0f,12,2}, // down
-        {20.0f,20.0f,12,2}, // top
-        {20.0f,20.0f,12,2}, // on_ground
-        false,  // invert
-        false,  // on ground
-        0,      // walking time
-        true    // alive
-    };
-
-    load_level(level_1);
-    initialize_jetpack();
-
-    counter_coin = (ent) {&coin_texture, {10,260,16,16}};
-
-    camera = (Camera2D) { 0 };
-    camera.target = (Vector2) {ply.base.rect.x, ply.base.rect.y};
-    camera.offset = (Vector2) {SCREEN_WIDTH/2, SCREEN_HEIGHT/2};
-    camera.rotation = 0.0f;
-    camera.zoom = GAME_SCALE;
-
-	while (!WindowShouldClose())
-    {
-        game_tick++;
-
-        register_input();
-
-        update_game();
-
-        draw_game(&camera, game_tick);
-	}
-
+void unload_resources()
+{
     UnloadTexture(player_texture);
     UnloadTexture(player_invert_texture);
     UnloadTexture(player_falling_texture);
@@ -803,6 +717,57 @@ int main(void)
     UnloadSound(step_sound);
     UnloadSound(jetpack_sound);
     UnloadSound(dead_sound);
+}
+
+void setup_camera(Camera2D *cam)
+{
+    *cam = (Camera2D) { 0 };
+    cam->target = (Vector2) {ply.base.rect.x, ply.base.rect.y};
+    cam->offset = (Vector2) {SCREEN_WIDTH/2, SCREEN_HEIGHT/2};
+    cam->rotation = 0.0f;
+    cam->zoom = GAME_SCALE;
+}
+
+int main(void)
+{
+	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "jetpack jumper (github.com/simlx/raylib-platformer)");
+    InitAudioDevice();
+
+	SetTargetFPS(60);
+
+	// Resources are loaded from memory
+    load_resources();
+
+    ply = (m_ent) {
+        (ent) {&player_texture, {20.0f,20.0f,TILE_WIDTH,TILE_WIDTH}},
+        {20.0f,20.0f,2,10}, // right
+        {20.0f,20.0f,2,10}, // left
+        {20.0f,20.0f,12,2}, // down
+        {20.0f,20.0f,12,2}, // top
+        {20.0f,20.0f,12,2}, // on_ground
+        false,  // invert
+        false,  // on ground
+        0,      // walking time
+        true    // alive
+    };
+
+    load_level(level_1);
+    initialize_jetpack();
+
+    counter_coin = (ent) {&coin_texture, {10,260,16,16}};
+
+    setup_camera(&camera);
+
+	while (!WindowShouldClose())
+    {
+        game_tick++;
+
+        register_input();
+        update_game();
+        draw_game(&camera, game_tick);
+	}
+
+    unload_resources();
 
     CloseWindow();
 	return 0;
