@@ -631,7 +631,7 @@ void draw_game(Camera2D *camera, int game_tick)
         EndMode2D();
 
         draw_jetpack_meter();
-        draw_texture_scaled(counter_coin.img, &counter_coin.rect,3.0f);
+        draw_texture_scaled(counter_coin.img, &counter_coin.rect,GAME_SCALE);
         draw_coin_counter();
 
         if (key_collected) draw_spinning_key();
