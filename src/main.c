@@ -20,6 +20,13 @@
 
 #include "font_minecraft.h"
 
+#include "sound_door_open.h"
+#include "sound_pickup_coin.h"
+#include "sound_step.h"
+#include "sound_jetpack.h"
+#include "sound_win.h"
+#include "sound_dead.h"
+
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 320
 
@@ -115,6 +122,12 @@ Texture2D none_texture                      ;
 Texture2D player_texture_anim               ;
 Texture2D player_texture_anim_invert        ;
 
+Sound pickup_coin_sound                      ;
+Sound win_sound                              ;
+Sound jetpack_sound                          ;
+Sound door_open_sound                        ;
+Sound step_sound                             ;
+Sound dead_sound                             ;
 
 #define ENT_WALL    1
 #define ENT_COIN    2
@@ -164,6 +177,12 @@ void register_input()
             ply.base.rect.x -= PLAYER_SPEED;
             ply.inverted = true;
         }
+
+        if (ply.on_ground && ply.walking_time % 25 == 0)
+        {
+            PlaySound(step_sound);
+        }
+
         ply.walking_time++;
     }
     else
@@ -178,6 +197,8 @@ void register_input()
         player_fuel -= 1.0f;
         next_jetpack_particle_count++;
         ply.on_ground = false;
+
+        if (game_tick % 5 == 0) PlaySound(jetpack_sound);
     }
     else if (ply.on_ground && player_fuel < 99.9f)
     {
@@ -382,19 +403,23 @@ void touch_flag(ent *flag)
     game_win = true;
     game_over = true;
     ply.base.rect.x = 1000;
+    PlaySound(win_sound);
 }
 void pickup_coin(ent *coin)
 {
     coins++;
     create_coin_pickup_text((int)coin->rect.x, (int)coin->rect.y);
+    PlaySound(pickup_coin_sound);
 }
 void pickup_key(ent *key)
 {
     key->rect.x = -999;
+    PlaySound(pickup_coin_sound);
 }
 void kill_player()
 {
     ply.alive = false;
+    PlaySound(dead_sound);
 }
 void handle_ent_collision(short *ent_ids[4])
 {
@@ -420,6 +445,7 @@ void handle_ent_collision(short *ent_ids[4])
                 {
                     destroy_ent(tile);
                     key_collected = false;
+                    PlaySound(door_open_sound);
                 }
             break;
             case ENT_FLAG:
@@ -502,6 +528,15 @@ void apply_m_ent_collision(m_ent *e)
     e->base.rect.x += colliding_with_left ? PLAYER_SPEED : 0;
     e->base.rect.x -= colliding_with_right ? PLAYER_SPEED : 0;
     e->base.rect.y += colliding_with_top ? PLAYER_SPEED -0.2 : 0;
+}
+
+Sound load_sound(const unsigned char *file_data, unsigned int data_size)
+{
+    
+    Wave wav = LoadWaveFromMemory(".wav", file_data, data_size);
+    Sound snd = LoadSoundFromWave(wav);
+    UnloadWave(wav);
+    return snd;
 }
 
 // Load a texture from memory and replace MAGENTA with BLANK
@@ -661,6 +696,8 @@ int main(void)
 {
 
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "jetpack jumper (github.com/simlx/raylib-platformer)");
+    InitAudioDevice();
+
 	SetTargetFPS(60);
 
 	// Resources are loaded from memory
@@ -699,6 +736,15 @@ int main(void)
                                                res_Minecraft_ttf,
                                                res_Minecraft_ttf_len,
                                                32, NULL, 0);
+
+    step_sound      = load_sound(res_sfxr_step_wav, res_sfxr_step_wav_len);
+    jetpack_sound   = load_sound(res_sfxr_jetpack_wav, res_sfxr_jetpack_wav_len);
+    door_open_sound   = load_sound(res_sfxr_door_open_wav, res_sfxr_door_open_wav_len);
+    win_sound   = load_sound(res_sfxr_win_wav, res_sfxr_win_wav_len);
+    pickup_coin_sound   = load_sound(res_sfxr_pickup_coin_wav, res_sfxr_pickup_coin_wav_len);
+    dead_sound   = load_sound(res_sfxr_dead_wav, res_sfxr_dead_wav_len);
+
+
 
     ply = (m_ent) {
         (ent) {&player_texture, {20.0f,20.0f,TILE_WIDTH,TILE_WIDTH}},
@@ -750,6 +796,13 @@ int main(void)
     UnloadTexture(spikes_texture);
     UnloadTexture(flag_texture);
     UnloadTexture(none_texture);
+
+    UnloadSound(pickup_coin_sound);
+    UnloadSound(win_sound);
+    UnloadSound(door_open_sound);
+    UnloadSound(step_sound);
+    UnloadSound(jetpack_sound);
+    UnloadSound(dead_sound);
 
     CloseWindow();
 	return 0;
