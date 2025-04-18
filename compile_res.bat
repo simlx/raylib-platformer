@@ -21,6 +21,7 @@ xxd -i res\Minecraft.ttf            > include\font_minecraft.h
 
 xxd -i res\sfxr_door_open.wav       > include\sound_door_open.h
 xxd -i res\sfxr_jetpack.wav         > include\sound_jetpack.h
-xxd -i res\sfxr_pickup_coind.wav    > include\sound_pickup_coin.h
+xxd -i res\sfxr_pickup_coin.wav     > include\sound_pickup_coin.h
 xxd -i res\sfxr_step.wav            > include\sound_step.h
 xxd -i res\sfxr_win.wav             > include\sound_win.h
+xxd -i res\sfxr_dead.wav            > include\sound_dead.h
