@@ -198,7 +198,7 @@ void register_input()
         next_jetpack_particle_count++;
         ply.on_ground = false;
 
-        if (game_tick % 5 == 0) PlaySound(jetpack_sound);
+        if (game_tick % 4 == 0) PlaySound(jetpack_sound);
     }
     else if (ply.on_ground && player_fuel < 99.9f)
     {
@@ -472,10 +472,10 @@ void apply_m_ent_collision(m_ent *e)
         if (!colliding_with_on_ground) colliding_with_on_ground = CheckCollisionRecs(e->on_ground_collision_rect, *tile_rect) && tiles[i].type_id != ENT_COIN; // not on ground when the tile is a coin
     }
 
-    bool colliding_with_floor   = (floor_collision_tile != -1);
-    bool colliding_with_left    = (left_collision_tile  != -1);
-    bool colliding_with_right   = (right_collision_tile != -1);
-    bool colliding_with_top     = (top_collision_tile   != -1);
+    bool colliding_with_floor   = (floor_collision_tile > -1);
+    bool colliding_with_left    = (left_collision_tile  > -1);
+    bool colliding_with_right   = (right_collision_tile > -1);
+    bool colliding_with_top     = (top_collision_tile   > -1);
 
     short *colliding_ent_ids[4] = {
         &left_collision_tile,
