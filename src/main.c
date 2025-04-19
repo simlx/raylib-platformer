@@ -147,13 +147,13 @@ int level_1[] = { // 40 x 15
 1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,1,_,_,_,_,_,_,_,_,1,1,1,_,_,_,_,_,_,1,
 1,1,_,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,1,1,1,1,1,1,1,1,1,_,1,5,5,5,1,1,
 1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,1,1,1,1,_,_,_,_,_,_,_,1,1,1,1,1,1,
-1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,4,_,1,1,1,1,1,3,5,1,1,1,_,_,_,4,4,_,_,1,
-1,_,_,1,_,_,_,_,_,_,_,_,_,_,_,1,1,1,_,1,1,1,1,1,1,1,1,1,1,1,_,_,_,1,1,1,1,1,_,1,
-1,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,3,_,_,_,_,_,_,_,_,_,_,_,1,1,_,_,_,_,_,1,
-1,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,1,1,5,_,_,_,_,_,1,1,1,1,1,1,_,1,1,1,1,1,
-1,_,_,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,9,_,1,5,5,5,5,5,2,_,_,_,_,_,_,_,2,2,2,1,
-1,_,_,1,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,1,1,_,1,1,1,1,1,1,2,_,_,_,_,_,_,_,2,2,2,1,
-1,_,_,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,5,5,5,_,_,5,5,2,2,1,
+1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,4,_,1,1,1,1,1,3,5,1,1,1,_,_,4,4,4,_,_,1,
+1,2,2,_,_,_,_,_,_,_,_,_,_,_,_,1,1,1,_,1,1,1,1,1,1,1,1,1,1,1,_,_,_,1,1,1,1,1,_,1,
+1,_,_,_,_,2,2,1,1,2,2,2,_,2,2,2,2,_,_,1,3,_,_,_,_,_,_,_,_,_,_,_,1,1,_,_,_,_,_,1,
+1,_,1,_,_,2,2,2,2,2,2,2,_,2,2,2,2,_,_,1,1,1,5,_,_,_,_,_,1,1,1,1,1,1,_,1,1,1,1,1,
+1,3,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,9,_,1,5,5,5,5,5,2,_,_,_,_,_,_,_,2,2,2,1,
+1,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,1,1,_,1,1,1,1,1,1,2,_,_,_,_,_,_,_,2,2,2,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,5,5,5,_,_,5,5,2,2,1,
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 };
 
@@ -420,6 +420,7 @@ void handle_ent_collision(short *ent_ids[4])
     for (int i = 0 ; i < 4 ; i++)
     {
         ent *tile = &tiles[*ent_ids[i]];
+
         switch (tile->type_id)
         {
             case ENT_COIN:
@@ -449,6 +450,7 @@ void handle_ent_collision(short *ent_ids[4])
                 kill_player();
             break;
         }
+
     }
 }
 void apply_m_ent_collision(m_ent *e)
@@ -467,7 +469,7 @@ void apply_m_ent_collision(m_ent *e)
         if (left_collision_tile == -1 && CheckCollisionRecs(e->left_collision_rect, *tile_rect))    left_collision_tile = i;
         if (right_collision_tile == -1 && CheckCollisionRecs(e->right_collision_rect, *tile_rect))  right_collision_tile = i;
         if (top_collision_tile == -1 && CheckCollisionRecs(e->top_collision_rect, *tile_rect))      top_collision_tile = i;
-        if (!colliding_with_on_ground) colliding_with_on_ground = CheckCollisionRecs(e->on_ground_collision_rect, *tile_rect);
+        if (!colliding_with_on_ground) colliding_with_on_ground = CheckCollisionRecs(e->on_ground_collision_rect, *tile_rect) && tiles[i].type_id != ENT_COIN; // not on ground when the tile is a coin
     }
 
     bool colliding_with_floor   = (floor_collision_tile != -1);
@@ -479,7 +481,7 @@ void apply_m_ent_collision(m_ent *e)
         &left_collision_tile,
         &right_collision_tile,
         &top_collision_tile,
-        &floor_collision_tile
+        &floor_collision_tile,
     };
 
     handle_ent_collision(colliding_ent_ids);
