@@ -156,6 +156,57 @@ int level_1[] = { // 40 x 15
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,5,5,5,_,_,5,5,2,2,1,
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 };
+// Load the level into tiles
+void load_level(int leveldata[])
+{
+    int x = 0;
+    int y = 0;
+    int spacing = TILE_WIDTH;
+
+    for (int i = 0; i < TILES_NUM; i++)
+    {
+        ent *tile = &tiles[i];
+        int type = leveldata[x + (y * 40)];
+
+        tile->img = (type == 0) ? &none_texture :
+                    (type == 1) ? &map_tile_texture :
+                    (type == 2) ? &coin_texture :
+                    (type == 3) ? &key_texture :
+                    (type == 4) ? &door_texture :
+                    (type == 5) ? &spikes_texture :
+                    (type == 9) ? &flag_texture : &none_texture;
+
+        if (type == 0)
+        {
+            tile->rect.x = tile->rect.y = -999;
+        }
+        else
+        {
+            tile->rect.x = x * spacing;
+            tile->rect.y = y * spacing;
+        }
+
+        tile->rect.width = tile->rect.height = TILE_WIDTH;
+        tile->type_id = type;
+
+        if (++x >= 40)
+        {
+            x = 0;
+            y++;
+        }
+    }
+}
+
+void restart_level()
+{
+    load_level(level_1);
+    ply.alive = true;
+    ply.base.rect.x = 20;
+    ply.base.rect.y = 20;
+    coins = 0;
+    player_fuel = 99.9f;
+    key_collected = false;
+}
 
 void register_input()
 {
@@ -165,7 +216,12 @@ void register_input()
     bool key_right = IsKeyDown(KEY_RIGHT);
     bool key_up = IsKeyDown(KEY_UP);
 
-    if (!ply.alive) return;
+    if (!ply.alive)
+    {
+        if (IsKeyDown(KEY_R)) restart_level();
+
+        return;
+    }
 
     // Handle movement based on key presses
     if (key_right || key_left)
@@ -206,45 +262,8 @@ void register_input()
     }
 }
 
-// Load the level into tiles
-void load_level(int leveldata[])
-{
-    int x,y = 0;
-    int spacing = TILE_WIDTH;
 
-    for (int i = 0; i < TILES_NUM; i++)
-    {
-        ent *tile = &tiles[i];
-        int type = leveldata[x + (y * 40)];
 
-        tile->img = (type == 0) ? &none_texture :
-                    (type == 1) ? &map_tile_texture :
-                    (type == 2) ? &coin_texture :
-                    (type == 3) ? &key_texture :
-                    (type == 4) ? &door_texture :
-                    (type == 5) ? &spikes_texture :
-                    (type == 9) ? &flag_texture : &none_texture;
-
-        if (type == 0)
-        {
-            tile->rect.x = tile->rect.y = -999;
-        }
-        else
-        {
-            tile->rect.x = x * spacing;
-            tile->rect.y = y * spacing;
-        }
-
-        tile->rect.width = tile->rect.height = TILE_WIDTH;
-        tile->type_id = type;
-
-        if (++x >= 40)
-        {
-            x = 0;
-            y++;
-        }
-    }
-}
 void initialize_jetpack()
 {
     for (int i = 0 ; i < 30 ; i++)
@@ -537,6 +556,11 @@ void draw_win()
     DrawTextEx(minecraft_font,"LEVEL 1 COMPLETED", (Vector2) {220.0f,120.0f}, 16, 4,WHITE);
     DrawTextEx(minecraft_font,"YOU WIN!", (Vector2) {290.0f,140.0f}, 16, 4,WHITE);
 }
+void draw_restart()
+{
+    DrawTextEx(minecraft_font,"YOU DIED", (Vector2) {220.0f,120.0f}, 16, 4,WHITE);
+    DrawTextEx(minecraft_font,"PRESS R TO RESTART!", (Vector2) {230.0f,140.0f}, 16, 4,WHITE);
+}
 void draw_coin_counter()
 {
     strcpy(coin_text,"");
@@ -645,6 +669,7 @@ void draw_game(Camera2D *camera, int game_tick)
 
         if (key_collected)                  draw_spinning_key();
         if (game_over && game_win)          draw_win();
+        else if (!ply.alive)                draw_restart();
         if (game_tick < GAME_START_TICK)    ClearBackground(BLUE);
 
     EndDrawing();
