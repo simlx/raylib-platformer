@@ -757,12 +757,12 @@ void setup_camera(Camera2D *cam)
 
 int main(void)
 {
-	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "jetpack jumper (github.com/simlx/raylib-platformer)");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "jetpack jumper (github.com/simlx/raylib-platformer)");
     InitAudioDevice();
 
-	SetTargetFPS(60);
+    SetTargetFPS(60);
 
-	// Resources are loaded from memory
+    // Resources are loaded from memory
     load_resources();
 
     ply = (m_ent) {
@@ -782,17 +782,17 @@ int main(void)
 
     setup_camera(&camera);
 
-	while (!WindowShouldClose())
+    while (!WindowShouldClose())
     {
         game_tick++;
 
         register_input();
         update_game();
         draw_game(&camera, game_tick);
-	}
+    }
 
     unload_resources();
 
     CloseWindow();
-	return 0;
+    return 0;
 }
