@@ -593,9 +593,7 @@ void draw_coin_pickup_text()
         coin_add_text *ctext = &coin_add_texts[i];
         if (ctext->alive)
         {
-            draw_text("+1", ctext->pos.x - 10, ctext->pos.y, 8,
-                (Color){(game_tick % 3 == 0) ? 255 : 200,
-                (game_tick % 3 == 0) ? 255 : 200,0,255});   
+            draw_text("+1", ctext->pos.x - 10, ctext->pos.y, 8, YELLOW);
         }
     }
 }
