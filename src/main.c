@@ -77,6 +77,7 @@ typedef struct {
 } coin_add_text;
 
 float player_fuel = 99.9f;
+int player_flying_time = 0;
 
 short coins = 0;
 char coin_text[100];
@@ -251,12 +252,13 @@ void register_input()
         player_fuel -= 1.0f;
         next_jetpack_particle_count++;
         ply.on_ground = false;
-
-        if (game_tick % 4 == 0) PlaySound(jetpack_sound);
+        player_flying_time++;
+        if ( player_flying_time == 1 || game_tick % 8 == 0) PlaySound(jetpack_sound);
     }
     else if (ply.on_ground && player_fuel < 99.9f)
     {
         player_fuel += 0.80f;
+        player_flying_time = 0;
     }
 }
 
