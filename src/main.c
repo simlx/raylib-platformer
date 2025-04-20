@@ -46,6 +46,7 @@ typedef struct {
     Texture2D *img;
     Rectangle rect; // Base Rectangle
     short type_id;
+    short frame;    // animation frame
 } ent;
 
 // moving entity
@@ -64,14 +65,13 @@ typedef struct {
 
 // particle
 typedef struct {
-    ent base;
+    Vector2 pos;
     int lifetime;
     bool alive;
 } jetpack_particle;
 
 typedef struct {
-    int x;
-    int y;
+    Vector2 pos;
     int lifetime;
     bool alive;
 } coin_add_text;
@@ -90,14 +90,12 @@ bool game_over = false;
 bool game_win = false;
 
 m_ent ply;
-ent counter_coin;
 
 Font minecraft_font;
 
 ent tiles[TILES_NUM];
 jetpack_particle jetpack_particles[30];
 short next_jetpack_particle_count = 0;
-Rectangle jetpack_meter_rect = {15, 15, 16, 48};
 
 Color FUEL_COLOR_RED = {250,50,50,255};
 Color FUEL_COLOR_YELLOW = {250,250,50,255};
@@ -124,12 +122,12 @@ Texture2D none_texture                      ;
 Texture2D player_texture_anim               ;
 Texture2D player_texture_anim_invert        ;
 
-Sound pickup_coin_sound                      ;
-Sound win_sound                              ;
-Sound jetpack_sound                          ;
-Sound door_open_sound                        ;
-Sound step_sound                             ;
-Sound dead_sound                             ;
+Sound pickup_coin_sound                     ;
+Sound win_sound                             ;
+Sound jetpack_sound                         ;
+Sound door_open_sound                       ;
+Sound step_sound                            ;
+Sound dead_sound                            ;
 
 #define ENT_WALL    1
 #define ENT_COIN    2
@@ -262,35 +260,13 @@ void register_input()
     }
 }
 
-
-
-void initialize_jetpack()
-{
-    for (int i = 0 ; i < 30 ; i++)
-    {
-        jetpack_particle *jp = &jetpack_particles[i];
-        jp->base.rect = (Rectangle) {-999, -999, 16, 16};
-        jp->base.img = &jetpack_particle_texture;
-    }
-}
-void draw_player_kill_texture(Texture2D *texture, Rectangle *rect, float rotation)
-{
-    DrawTextureEx(*texture, (Vector2) {rect->x, rect->y + 25}, rotation, 1.0f, WHITE);
-}
-void draw_texture_scaled(Texture2D *texture, Rectangle *rect, float scale)
-{
-    DrawTextureEx(*texture, (Vector2) {rect->x, rect->y}, 0.0f, scale, WHITE);
-}
-void draw_texture(Texture2D *texture, Rectangle *rect)
-{
-    if (!game_win)
-        DrawTextureEx(*texture, (Vector2) {rect->x, rect->y}, 0.0f, 1.0f, WHITE);
-    else
-        DrawTextureEx(*texture, (Vector2) {rect->x, rect->y}, game_tick, 1.0f, WHITE);
-}
 void draw_texture_frame(Texture2D *texture, Rectangle *rect, int frame)
 {
-    DrawTextureRec(*texture,(Rectangle) {16*frame,0,16,16}, (Vector2) {rect->x, rect->y}, WHITE);
+    DrawTextureRec(*texture,(Rectangle) {TILE_WIDTH*frame,0,TILE_WIDTH,TILE_WIDTH}, (Vector2) {rect->x, rect->y}, WHITE);
+}
+void draw_ent2(ent *entity)
+{
+    DrawTextureRec(*entity->img,(Rectangle) {TILE_WIDTH*entity->frame,0,TILE_WIDTH,TILE_WIDTH}, (Vector2) {entity->rect.x, entity->rect.y}, WHITE);
 }
 
 void create_coin_pickup_text(int x, int y)
@@ -302,32 +278,35 @@ void create_coin_pickup_text(int x, int y)
         {
             ctext->alive = true;
             ctext->lifetime = 0;
-            ctext->x = x;
-            ctext->y = y;
+            ctext->pos.x = x;
+            ctext->pos.y = y;
             return;
         }
     }
 }
 
+void draw_jetpack_particle(jetpack_particle *jp)
+{
+    if (jp->alive) DrawTextureEx(jetpack_particle_texture, jp->pos, 0.0f, 1.0f, WHITE);
+}
 void draw_jetpack_particles()
 {
     for (int i = 0 ; i < 30 ; i++)
     {
-        jetpack_particle *jp = &jetpack_particles[i];
-        draw_texture(jp->base.img,&jp->base.rect);
+        draw_jetpack_particle(&jetpack_particles[i]);
     }
 }
 void create_jetpack_particle(jetpack_particle *jp)
 {
     jp->alive = true;
     jp->lifetime = 0;
-    jp->base.rect.x = ply.base.rect.x + ((ply.inverted) ? 4 : -4  );
-    jp->base.rect.y = ply.base.rect.y + 6;
+    jp->pos.x = ply.base.rect.x + ((ply.inverted) ? 4 : -4  );
+    jp->pos.y = ply.base.rect.y + 6;
 }
 void destroy_jetpack_particle(jetpack_particle *jp)
 {
     jp->alive = false;
-    jp->base.rect.x = -999;
+    jp->pos.x = -999;
 }
 void update_jetpack_particles()
 {
@@ -347,8 +326,8 @@ void update_jetpack_particles()
             int r = GetRandomValue(-1,1);
             int r2 = GetRandomValue(0,1);
 
-            jp->base.rect.x += r;
-            jp->base.rect.y += r2 * ((40 - jp->lifetime)/15);
+            jp->pos.x += r;
+            jp->pos.y += r2 * ((40 - jp->lifetime)/15);
             jp->lifetime++;
 
             if (jp->lifetime > 20) destroy_jetpack_particle(jp);
@@ -367,12 +346,12 @@ void draw_world()
 {
     for (int i = 0 ; i < TILES_NUM ; i++)
     {
-        draw_texture(tiles[i].img, &tiles[i].rect);
+        draw_ent2(&tiles[i]);
     }
 }
 void draw_jetpack_meter()
 {
-    draw_texture_scaled(&jetpack_meter_texture, &jetpack_meter_rect, GAME_SCALE);
+    DrawTextureEx(jetpack_meter_texture, (Vector2) {15,15}, 0.0f, GAME_SCALE, WHITE);
 
     // fuel color
     Color *fuel_clr = &FUEL_COLOR_GREEN;
@@ -472,6 +451,7 @@ void handle_ent_collision(short *ent_ids[4])
 
     }
 }
+
 void apply_m_ent_collision(m_ent *e)
 {
     bool colliding_with_on_ground = false;
@@ -548,25 +528,31 @@ Texture2D load_texture(const unsigned char *file_data, unsigned int data_size)
     UnloadImage(img);
     return tex;
 }
+
 void draw_lose()
 {
 }
+
 void draw_win()
 {
     DrawTextEx(minecraft_font,"LEVEL 1 COMPLETED", (Vector2) {220.0f,120.0f}, 16, 4,WHITE);
     DrawTextEx(minecraft_font,"YOU WIN!", (Vector2) {290.0f,140.0f}, 16, 4,WHITE);
 }
+
 void draw_restart()
 {
     DrawTextEx(minecraft_font,"YOU DIED", (Vector2) {220.0f,120.0f}, 16, 4,WHITE);
     DrawTextEx(minecraft_font,"PRESS R TO RESTART!", (Vector2) {230.0f,140.0f}, 16, 4,WHITE);
 }
+
 void draw_coin_counter()
 {
+    DrawTextureEx(coin_texture, (Vector2) {10,260}, 0.0f, GAME_SCALE, WHITE);
     strcpy(coin_text,"");
     sprintf(coin_text,"x%d",coins);
     DrawTextEx(minecraft_font,coin_text, (Vector2) {50.0f,280.0f}, 16, 4,WHITE);
 }
+
 void draw_spinning_key()
 {
     DrawTexturePro
@@ -587,57 +573,60 @@ void update_coin_pickup_text()
         if (ctext->alive) 
         {
             ctext->lifetime++;
-            if (ctext->lifetime % 2 == 0) ctext->y-=1;
+            if (ctext->lifetime % 2 == 0) ctext->pos.y-=1;
             if (ctext->lifetime > 30) ctext->alive = false;
         }
     }
 }
+
 void draw_coin_pickup_text()
 {
     for( int i = 0 ; i < 10 ; i++)
     {
         coin_add_text *ctext = &coin_add_texts[i];
-        if (ctext->alive) DrawTextEx(minecraft_font, "+1", (Vector2) {ctext->x - 10,ctext->y}, 9, 4, YELLOW);
+        if (ctext->alive) DrawTextEx(minecraft_font, "+1", (Vector2) {ctext->pos.x - 10,ctext->pos.y}, 9, 4, YELLOW);
     }
 }
 
 void update_player()
 {
+    // decide current texture
     if (!ply.alive)
         ply.base.img = &player_falling_texture;
     else if (!ply.inverted)
         if (ply.on_ground)
-            ply.base.img = &player_texture;
+            if (ply.walking_time > 0)
+                ply.base.img = &player_texture_anim;
+            else
+                ply.base.img = &player_texture;
         else
             ply.base.img = &player_falling_texture;
     else
         if (ply.on_ground)
-            ply.base.img = &player_invert_texture;
+            if (ply.walking_time > 0)
+                ply.base.img = &player_texture_anim_invert;
+            else
+                ply.base.img = &player_invert_texture;
         else
             ply.base.img = &player_falling_invert_texture;
 
     player_frametime+=12;
     if (player_frametime > 298) player_frametime = 1;
     player_frame = player_frametime / 100;
+    ply.base.frame = player_frame;
 }
 
-
-void draw_ent(ent *entity)
+void draw_player_kill(Texture2D *texture, Rectangle *rect, float rotation)
 {
-    draw_texture(entity->img, &entity->rect);
+    DrawTextureEx(*texture, (Vector2) {rect->x, rect->y + 25}, rotation, 1.0f, WHITE);
 }
 
 void draw_player()
 {
     if (ply.alive)
-        if (ply.on_ground && ply.walking_time > 0)
-            if (ply.inverted)
-                draw_texture_frame(&player_texture_anim_invert, &ply.base.rect, player_frame);
-            else
-                draw_texture_frame(&player_texture_anim, &ply.base.rect, player_frame);
-        else draw_ent(&ply.base);
+        draw_ent2(&ply.base);
     else
-        draw_player_kill_texture(ply.base.img,&ply.base.rect,-90.0f);
+        draw_player_kill(ply.base.img,&ply.base.rect,-90.0f);
 }
 
 void draw_game(Camera2D *camera, int game_tick)
@@ -664,7 +653,6 @@ void draw_game(Camera2D *camera, int game_tick)
         EndMode2D();
 
         draw_jetpack_meter();
-        draw_texture_scaled(counter_coin.img, &counter_coin.rect,GAME_SCALE);
         draw_coin_counter();
 
         if (key_collected)                  draw_spinning_key();
@@ -779,9 +767,6 @@ int main(void)
     };
 
     load_level(level_1);
-    initialize_jetpack();
-
-    counter_coin = (ent) {&coin_texture, {10,260,16,16}};
 
     setup_camera(&camera);
 
