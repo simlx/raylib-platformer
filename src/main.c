@@ -65,7 +65,7 @@ typedef struct {
 
 // particle
 typedef struct {
-    Vector2 pos;
+    ent base;
     int lifetime;
     bool alive;
 } jetpack_particle;
@@ -201,8 +201,8 @@ void restart_level()
     ply.alive = true;
     ply.base.rect.x = 20;
     ply.base.rect.y = 20;
-    coins = 0;
     player_fuel = 99.9f;
+    coins = 0;
     key_collected = false;
 }
 
@@ -260,11 +260,17 @@ void register_input()
     }
 }
 
-void draw_texture_frame(Texture2D *texture, Rectangle *rect, int frame)
+void draw_text(const char* text, int x, int y, int size, Color color)
 {
-    DrawTextureRec(*texture,(Rectangle) {TILE_WIDTH*frame,0,TILE_WIDTH,TILE_WIDTH}, (Vector2) {rect->x, rect->y}, WHITE);
+    DrawTextEx(minecraft_font, text, (Vector2) {x, y}, size, 4, color);
 }
-void draw_ent2(ent *entity)
+
+void draw_text_big(const char* text, int x, int y)
+{
+    DrawTextEx(minecraft_font, text, (Vector2) {x, y}, 16, 4, WHITE);
+}
+
+void draw_ent(ent *entity)
 {
     DrawTextureRec(*entity->img,(Rectangle) {TILE_WIDTH*entity->frame,0,TILE_WIDTH,TILE_WIDTH}, (Vector2) {entity->rect.x, entity->rect.y}, WHITE);
 }
@@ -287,7 +293,7 @@ void create_coin_pickup_text(int x, int y)
 
 void draw_jetpack_particle(jetpack_particle *jp)
 {
-    if (jp->alive) DrawTextureEx(jetpack_particle_texture, jp->pos, 0.0f, 1.0f, WHITE);
+    if (jp->alive) draw_ent(&jp->base);
 }
 void draw_jetpack_particles()
 {
@@ -300,13 +306,14 @@ void create_jetpack_particle(jetpack_particle *jp)
 {
     jp->alive = true;
     jp->lifetime = 0;
-    jp->pos.x = ply.base.rect.x + ((ply.inverted) ? 4 : -4  );
-    jp->pos.y = ply.base.rect.y + 6;
+    jp->base.img = &jetpack_particle_texture;
+    jp->base.rect.x = ply.base.rect.x + ((ply.inverted) ? 4 : -4  );
+    jp->base.rect.y = ply.base.rect.y + 6;
 }
 void destroy_jetpack_particle(jetpack_particle *jp)
 {
     jp->alive = false;
-    jp->pos.x = -999;
+    jp->base.rect.x = -999;
 }
 void update_jetpack_particles()
 {
@@ -326,8 +333,8 @@ void update_jetpack_particles()
             int r = GetRandomValue(-1,1);
             int r2 = GetRandomValue(0,1);
 
-            jp->pos.x += r;
-            jp->pos.y += r2 * ((40 - jp->lifetime)/15);
+            jp->base.rect.x += r;
+            jp->base.rect.y += r2 * ((40 - jp->lifetime)/15);
             jp->lifetime++;
 
             if (jp->lifetime > 20) destroy_jetpack_particle(jp);
@@ -346,7 +353,7 @@ void draw_world()
 {
     for (int i = 0 ; i < TILES_NUM ; i++)
     {
-        draw_ent2(&tiles[i]);
+        draw_ent(&tiles[i]);
     }
 }
 void draw_jetpack_meter()
@@ -468,8 +475,8 @@ void apply_m_ent_collision(m_ent *e)
         if (left_collision_tile == -1 && CheckCollisionRecs(e->left_collision_rect, *tile_rect))    left_collision_tile = i;
         if (right_collision_tile == -1 && CheckCollisionRecs(e->right_collision_rect, *tile_rect))  right_collision_tile = i;
         if (top_collision_tile == -1 && CheckCollisionRecs(e->top_collision_rect, *tile_rect))      top_collision_tile = i;
-        if (!colliding_with_on_ground) colliding_with_on_ground = CheckCollisionRecs(e->on_ground_collision_rect, *tile_rect) && tiles[i].type_id != ENT_COIN; // not on ground when the tile is a coin
-    }
+        // not on ground when the tile is a coin
+        if (!colliding_with_on_ground) colliding_with_on_ground = CheckCollisionRecs(e->on_ground_collision_rect, *tile_rect) && tiles[i].type_id != ENT_COIN;     }
 
     bool colliding_with_floor   = (floor_collision_tile > -1);
     bool colliding_with_left    = (left_collision_tile  > -1);
@@ -535,14 +542,14 @@ void draw_lose()
 
 void draw_win()
 {
-    DrawTextEx(minecraft_font,"LEVEL 1 COMPLETED", (Vector2) {220.0f,120.0f}, 16, 4,WHITE);
-    DrawTextEx(minecraft_font,"YOU WIN!", (Vector2) {290.0f,140.0f}, 16, 4,WHITE);
+    draw_text_big("LEVEL 1 COMPLETED", 220, 120);
+    draw_text_big("YOU WIN!", 290, 140);
 }
 
 void draw_restart()
 {
-    DrawTextEx(minecraft_font,"YOU DIED", (Vector2) {220.0f,120.0f}, 16, 4,WHITE);
-    DrawTextEx(minecraft_font,"PRESS R TO RESTART!", (Vector2) {230.0f,140.0f}, 16, 4,WHITE);
+    draw_text_big("YOU DIED", 220,120);
+    draw_text_big("PRESS R TO RESTART!", 230, 140);
 }
 
 void draw_coin_counter()
@@ -550,7 +557,7 @@ void draw_coin_counter()
     DrawTextureEx(coin_texture, (Vector2) {10,260}, 0.0f, GAME_SCALE, WHITE);
     strcpy(coin_text,"");
     sprintf(coin_text,"x%d",coins);
-    DrawTextEx(minecraft_font,coin_text, (Vector2) {50.0f,280.0f}, 16, 4,WHITE);
+    draw_text_big(coin_text, 50, 280);
 }
 
 void draw_spinning_key()
@@ -584,7 +591,12 @@ void draw_coin_pickup_text()
     for( int i = 0 ; i < 10 ; i++)
     {
         coin_add_text *ctext = &coin_add_texts[i];
-        if (ctext->alive) DrawTextEx(minecraft_font, "+1", (Vector2) {ctext->pos.x - 10,ctext->pos.y}, 9, 4, YELLOW);
+        if (ctext->alive)
+        {
+            draw_text("+1", ctext->pos.x - 10, ctext->pos.y, 8,
+                (Color){(game_tick % 3 == 0) ? 255 : 200,
+                (game_tick % 3 == 0) ? 255 : 200,0,255});   
+        }
     }
 }
 
@@ -618,13 +630,13 @@ void update_player()
 
 void draw_player_kill(Texture2D *texture, Rectangle *rect, float rotation)
 {
-    DrawTextureEx(*texture, (Vector2) {rect->x, rect->y + 25}, rotation, 1.0f, WHITE);
+    DrawTextureEx(*texture, (Vector2) {rect->x,rect->y+25}, rotation, 1.0f, WHITE);
 }
 
 void draw_player()
 {
     if (ply.alive)
-        draw_ent2(&ply.base);
+        draw_ent(&ply.base);
     else
         draw_player_kill(ply.base.img,&ply.base.rect,-90.0f);
 }
@@ -737,8 +749,8 @@ void unload_resources()
 void setup_camera(Camera2D *cam)
 {
     *cam = (Camera2D) { 0 };
-    cam->target = (Vector2) {ply.base.rect.x, ply.base.rect.y};
-    cam->offset = (Vector2) {SCREEN_WIDTH/2, SCREEN_HEIGHT/2};
+    cam->target = (Vector2) {ply.base.rect.x,ply.base.rect.y};
+    cam->offset = (Vector2) {SCREEN_WIDTH/2,SCREEN_HEIGHT/2};
     cam->rotation = 0.0f;
     cam->zoom = GAME_SCALE;
 }
