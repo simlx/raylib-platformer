@@ -832,10 +832,13 @@ void unload_resources()
     UnloadTexture(coin_texture);
     UnloadTexture(door_texture);
     UnloadTexture(key_texture);
+    UnloadTexture(fuel_texture);
     UnloadTexture(spikes_texture);
     UnloadTexture(flag_texture);
     UnloadTexture(none_texture);
 
+    UnloadSound(pickup_fuel_sound);
+    UnloadSound(pickup_key_sound);
     UnloadSound(pickup_coin_sound);
     UnloadSound(win_sound);
     UnloadSound(door_open_sound);
