@@ -24,6 +24,7 @@
 
 #include "sound_door_open.h"
 #include "sound_pickup_coin.h"
+#include "sound_pickup_key.h"
 #include "sound_pickup_fuel.h"
 #include "sound_step.h"
 #include "sound_jetpack.h"
@@ -44,7 +45,10 @@
 #define GAME_START_TICK 30
 #define FUEL_DECREASE_RATE 5
 #define FUEL_MAX 3000
-//#define DEBUG_PLAYER_COLLISIONS
+
+#define LEVEL_MAX 2
+
+// #define DEBUG_PLAYER_COLLISIONS
 
 // basic entity
 typedef struct {
@@ -86,6 +90,7 @@ int player_flying_time = 0;
 
 short coins = 0;
 char coin_text[100];
+char win_text[100];
 coin_add_text coin_add_texts[10];
 
 bool key_collected = false;
@@ -130,6 +135,7 @@ Texture2D player_texture_anim               ;
 Texture2D player_texture_anim_invert        ;
 
 Sound pickup_coin_sound                     ;
+Sound pickup_key_sound                     ;
 Sound pickup_fuel_sound                     ;
 Sound win_sound                             ;
 Sound jetpack_sound                         ;
@@ -146,7 +152,27 @@ Sound dead_sound                            ;
 #define ENT_FUEL    6
 #define _ 0
 
-int level_1[] = { // 40 x 15
+int current_level = 1;
+
+int level_template[] = { // 40 x 15
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,
+1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,
+1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,
+1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,
+1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,
+1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,
+1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,
+1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,
+1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,
+1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,
+1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,
+1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,
+1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+};
+
+int level_0[] = { // 40 x 15
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 1,_,_,_,_,_,2,2,2,2,_,1,_,_,_,2,2,2,2,_,_,_,_,_,3,1,2,2,2,_,_,_,_,_,_,_,_,_,_,1,
 1,_,_,_,_,_,_,_,_,_,_,1,6,_,_,2,2,2,2,_,_,_,1,1,1,1,2,2,2,_,_,5,_,_,5,_,_,5,_,1,
@@ -162,6 +188,29 @@ int level_1[] = { // 40 x 15
 1,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,1,1,_,1,1,1,1,1,1,2,_,_,_,_,_,_,_,2,2,2,1,
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,5,5,5,_,_,5,5,2,2,1,
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+};
+
+int level_1[] = { // 40 x 15
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,_,_,_,1,_,2,2,_,1,1,_,_,_,_,_,1,1,_,_,1,1,1,1,1,1,_,_,2,2,2,2,2,2,2,_,_,_,_,1,
+1,_,_,_,1,_,_,_,_,4,4,_,_,_,_,_,1,1,_,_,4,_,_,_,1,1,_,_,2,2,2,2,2,2,2,_,_,_,_,1,
+1,1,1,_,1,_,_,_,1,1,1,1,_,_,_,_,1,1,_,1,1,1,1,_,1,1,_,_,2,2,2,2,2,2,2,_,_,_,_,1,
+1,3,_,_,1,_,1,1,1,_,_,_,_,_,_,_,1,1,_,_,1,6,1,_,1,1,_,_,2,2,2,2,2,2,2,_,1,1,1,1,
+1,2,_,2,1,_,2,2,1,_,_,_,_,_,_,_,1,1,_,_,4,_,1,_,1,1,_,_,_,_,_,_,_,_,_,_,1,_,_,1,
+1,2,_,2,1,_,_,_,1,_,1,_,_,_,_,_,_,1,1,1,1,_,1,_,1,1,6,6,6,6,6,6,_,_,_,_,1,_,9,1,
+1,2,_,2,1,1,1,_,1,_,1,_,_,_,_,_,_,1,6,_,1,_,1,_,1,1,1,1,1,1,1,1,1,_,_,1,1,_,1,1,
+1,2,_,2,1,_,_,_,1,_,1,1,1,1,1,1,1,1,1,_,1,_,1,_,1,1,_,3,4,3,4,3,4,_,_,_,_,_,1,1,
+1,_,_,_,_,_,_,_,1,_,1,1,1,1,1,1,1,1,_,_,4,_,1,_,1,1,_,1,1,1,1,1,1,1,_,1,1,1,1,1,
+1,1,1,_,1,1,1,_,1,_,_,_,2,2,2,2,2,_,_,_,1,1,1,_,1,1,_,1,2,2,2,_,_,_,_,_,_,_,_,1,
+1,6,_,_,1,3,_,_,1,_,_,_,2,3,3,3,2,_,_,1,1,1,1,_,_,_,_,1,2,2,2,_,_,_,_,_,_,_,_,1,
+1,2,2,2,1,_,_,_,1,_,_,_,_,_,_,_,_,_,1,1,1,1,1,_,_,_,_,1,2,2,2,_,_,_,_,_,_,_,_,1,
+1,5,5,2,1,5,5,5,1,_,_,_,_,_,_,_,_,1,1,1,1,1,1,5,5,5,5,1,2,2,2,5,5,5,5,5,_,_,_,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+};
+
+int* levels[] = {
+    level_0,
+    level_1
 };
 
 // Load the level into tiles
@@ -206,15 +255,23 @@ void load_level(int leveldata[])
     }
 }
 
+
+
 void restart_level()
 {
-    load_level(level_1);
+    load_level(levels[current_level]);
     ply.alive = true;
     ply.base.rect.x = 20;
     ply.base.rect.y = 20;
     player_fuel = FUEL_MAX;
     coins = 0;
     key_collected = false;
+}
+
+void next_level()
+{
+    current_level++;
+    restart_level();
 }
 
 void register_input()
@@ -224,6 +281,17 @@ void register_input()
     bool key_left = IsKeyDown(KEY_LEFT);
     bool key_right = IsKeyDown(KEY_RIGHT);
     bool key_up = IsKeyDown(KEY_UP);
+
+
+    if (game_win)
+    {
+        if (IsKeyDown(KEY_ENTER) && (current_level+1) < LEVEL_MAX)
+        {
+            game_win = false;
+            game_over = false;
+            next_level();
+        }
+    }
 
     if (!ply.alive)
     {
@@ -426,7 +494,7 @@ void pickup_coin(ent *coin)
 void pickup_key(ent *key)
 {
     key->rect.x = -999;
-    PlaySound(pickup_coin_sound);
+    PlaySound(pickup_key_sound);
 }
 void kill_player()
 {
@@ -558,8 +626,18 @@ void draw_lose()
 
 void draw_win()
 {
-    draw_text_big("LEVEL 1 COMPLETED", 220, 120);
-    draw_text_big("YOU WIN!", 290, 140);
+    if ((current_level+1) < LEVEL_MAX)
+    {
+        strcpy(win_text,"");
+        sprintf(win_text,"LEVEL %d COMPLETED",current_level+1);
+        draw_text_big(win_text, 220, 120);
+        draw_text_big("PRESS ENTER TO CONTINUE", 220, 230);
+    }
+    else
+    {
+        draw_text_big("ALL LEVELS COMPLETED", 220, 120);
+        draw_text_big("YOU WIN!", 300, 230);
+    }
 }
 
 void draw_restart()
@@ -678,8 +756,11 @@ void draw_game(Camera2D *camera, int game_tick)
 
         EndMode2D();
 
-        draw_jetpack_meter();
-        draw_coin_counter();
+        if (!game_over)
+        {
+            draw_jetpack_meter();
+            draw_coin_counter();
+        }
 
         if (key_collected)                  draw_spinning_key();
         if (game_over && game_win)          draw_win();
@@ -732,6 +813,7 @@ void load_resources()
     door_open_sound               = load_sound(res_sfxr_door_open_wav,          res_sfxr_door_open_wav_len);
     win_sound                     = load_sound(res_sfxr_win_wav,                res_sfxr_win_wav_len);
     pickup_coin_sound             = load_sound(res_sfxr_pickup_coin_wav,        res_sfxr_pickup_coin_wav_len);
+    pickup_key_sound              = load_sound(res_sfxr_pickup_key_wav,        res_sfxr_pickup_key_wav_len);
     pickup_fuel_sound             = load_sound(res_sfxr_pickup_fuel_wav,        res_sfxr_pickup_fuel_wav_len);
     dead_sound                    = load_sound(res_sfxr_dead_wav,               res_sfxr_dead_wav_len);
 }
@@ -794,7 +876,8 @@ int main(void)
         true    // alive
     };
 
-    load_level(level_1);
+    current_level = -1;
+    next_level();
 
     setup_camera(&camera);
 
