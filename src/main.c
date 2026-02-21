@@ -282,6 +282,11 @@ void register_input()
     bool key_right = IsKeyDown(KEY_RIGHT);
     bool key_up = IsKeyDown(KEY_UP);
 
+    if (IsKeyDown(KEY_F))
+    {
+        ToggleFullscreen();
+        return;
+    }
 
     if (game_win)
     {
