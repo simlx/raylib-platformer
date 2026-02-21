@@ -1,10 +1,12 @@
 #include "raylib.h"
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "texture_coin.h"
 #include "texture_door.h"
 #include "texture_flag.h"
+#include "texture_fuel.h"
 #include "texture_jetpack_meter.h"
 #include "texture_jetpack_particle.h"
 #include "texture_key.h"
@@ -22,6 +24,7 @@
 
 #include "sound_door_open.h"
 #include "sound_pickup_coin.h"
+#include "sound_pickup_fuel.h"
 #include "sound_step.h"
 #include "sound_jetpack.h"
 #include "sound_win.h"
@@ -39,6 +42,8 @@
 
 #define GAME_SCALE 3
 #define GAME_START_TICK 30
+#define FUEL_DECREASE_RATE 5
+#define FUEL_MAX 3000
 //#define DEBUG_PLAYER_COLLISIONS
 
 // basic entity
@@ -76,7 +81,7 @@ typedef struct {
     bool alive;
 } coin_add_text;
 
-float player_fuel = 99.9f;
+int player_fuel = FUEL_MAX/2;
 int player_flying_time = 0;
 
 short coins = 0;
@@ -118,12 +123,14 @@ Texture2D door_texture                      ;
 Texture2D key_texture                       ;
 Texture2D spikes_texture                    ;
 Texture2D flag_texture                      ;
+Texture2D fuel_texture                      ;
 Texture2D none_texture                      ;
 
 Texture2D player_texture_anim               ;
 Texture2D player_texture_anim_invert        ;
 
 Sound pickup_coin_sound                     ;
+Sound pickup_fuel_sound                     ;
 Sound win_sound                             ;
 Sound jetpack_sound                         ;
 Sound door_open_sound                       ;
@@ -136,25 +143,27 @@ Sound dead_sound                            ;
 #define ENT_DOOR    4
 #define ENT_SPIKES  5
 #define ENT_FLAG    9
+#define ENT_FUEL    6
 #define _ 0
 
 int level_1[] = { // 40 x 15
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-1,_,_,_,_,_,2,2,2,2,_,1,1,1,_,2,2,2,2,_,_,_,_,_,3,1,2,2,2,_,_,_,_,_,_,_,_,_,_,1,
-1,_,_,_,_,_,_,_,_,_,_,1,1,1,_,2,2,2,2,_,_,_,1,1,1,1,2,2,2,_,_,5,_,_,5,_,_,5,_,1,
+1,_,_,_,_,_,2,2,2,2,_,1,_,_,_,2,2,2,2,_,_,_,_,_,3,1,2,2,2,_,_,_,_,_,_,_,_,_,_,1,
+1,_,_,_,_,_,_,_,_,_,_,1,6,_,_,2,2,2,2,_,_,_,1,1,1,1,2,2,2,_,_,5,_,_,5,_,_,5,_,1,
 1,1,1,1,1,1,1,1,1,1,_,1,1,1,_,2,2,2,2,_,_,1,1,_,_,_,2,2,2,_,_,1,1,1,1,1,1,1,_,1,
-1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,1,_,_,_,_,_,_,_,_,1,1,1,_,_,_,_,_,_,1,
-1,1,_,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,1,1,1,1,1,1,1,1,1,_,1,5,5,5,1,1,
-1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,_,_,1,1,1,1,_,_,_,_,_,_,_,1,1,1,1,1,1,
+1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,1,_,_,_,_,_,_,_,_,1,1,_,_,_,_,_,_,_,1,
+1,1,_,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,1,1,1,1,1,1,1,6,_,_,1,5,5,5,1,1,
+1,1,_,_,_,_,_,_,_,_,6,_,_,_,_,_,_,_,_,_,1,_,_,1,1,1,1,_,_,_,_,_,_,_,1,1,1,1,1,1,
 1,1,1,1,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,4,_,1,1,1,1,1,3,5,1,1,1,_,_,4,4,4,_,_,1,
 1,2,2,_,_,_,_,_,_,_,_,_,_,_,_,1,1,1,_,1,1,1,1,1,1,1,1,1,1,1,_,_,_,1,1,1,1,1,_,1,
 1,_,_,_,_,2,2,1,1,2,2,2,_,2,2,2,2,_,_,1,3,_,_,_,_,_,_,_,_,_,_,_,1,1,_,_,_,_,_,1,
-1,_,1,_,_,2,2,2,2,2,2,2,_,2,2,2,2,_,_,1,1,1,5,_,_,_,_,_,1,1,1,1,1,1,_,1,1,1,1,1,
-1,3,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,9,_,1,5,5,5,5,5,2,_,_,_,_,_,_,_,2,2,2,1,
+1,_,1,_,_,2,2,2,2,2,2,2,_,2,2,2,2,_,_,1,1,1,5,_,_,6,_,_,1,1,1,1,1,1,_,1,1,1,1,1,
+1,3,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,1,9,_,1,5,5,5,5,5,6,_,_,_,_,_,_,_,2,2,2,1,
 1,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,1,1,_,1,1,1,1,1,1,2,_,_,_,_,_,_,_,2,2,2,1,
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,_,_,_,_,_,_,_,_,_,5,5,5,_,_,5,5,2,2,1,
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 };
+
 // Load the level into tiles
 void load_level(int leveldata[])
 {
@@ -173,6 +182,7 @@ void load_level(int leveldata[])
                     (type == 3) ? &key_texture :
                     (type == 4) ? &door_texture :
                     (type == 5) ? &spikes_texture :
+                    (type == 6) ? &fuel_texture :
                     (type == 9) ? &flag_texture : &none_texture;
 
         if (type == 0)
@@ -202,7 +212,7 @@ void restart_level()
     ply.alive = true;
     ply.base.rect.x = 20;
     ply.base.rect.y = 20;
-    player_fuel = 99.9f;
+    player_fuel = FUEL_MAX;
     coins = 0;
     key_collected = false;
 }
@@ -249,16 +259,11 @@ void register_input()
     if (key_up && player_fuel > 0)
     {
         ply.base.rect.y -= JETPACK_SPEED;
-        player_fuel -= 1.0f;
+        player_fuel -= FUEL_DECREASE_RATE;
         next_jetpack_particle_count++;
         ply.on_ground = false;
         player_flying_time++;
         if ( player_flying_time == 1 || game_tick % 8 == 0) PlaySound(jetpack_sound);
-    }
-    else if (ply.on_ground && player_fuel < 99.9f)
-    {
-        player_fuel += 0.80f;
-        player_flying_time = 0;
     }
 }
 
@@ -364,15 +369,15 @@ void draw_jetpack_meter()
 
     // fuel color
     Color *fuel_clr = &FUEL_COLOR_GREEN;
-    if (player_fuel < 30)
+    if (player_fuel < FUEL_MAX/4)
         fuel_clr = &FUEL_COLOR_RED;
-    else if (player_fuel < 60)
+    else if (player_fuel < FUEL_MAX/2)
         fuel_clr = &FUEL_COLOR_YELLOW;
 
     int fuel_meter_height = 95;
 
     // fuel meter
-    DrawRectangle(30, 146  - (player_fuel/100) * fuel_meter_height, 18, (player_fuel/100) * fuel_meter_height, *fuel_clr);
+    DrawRectangle(27, 124  - ((double)player_fuel/FUEL_MAX) * fuel_meter_height, 18, ((double)player_fuel/FUEL_MAX) * fuel_meter_height, *fuel_clr);
 }
 void apply_gravity(m_ent *entity)
 {
@@ -405,6 +410,12 @@ void touch_flag(ent *flag)
     game_over = true;
     ply.base.rect.x = 1000;
     PlaySound(win_sound);
+}
+void touch_fuel(ent *fuel)
+{
+    fuel->rect.x = -999;
+    player_fuel = FUEL_MAX;
+    PlaySound(pickup_fuel_sound);
 }
 void pickup_coin(ent *coin)
 {
@@ -452,6 +463,9 @@ void handle_ent_collision(short *ent_ids[4])
             break;
             case ENT_FLAG:
                 touch_flag(tile);
+            break;
+            case ENT_FUEL:
+                touch_fuel(tile);
             break;
             case ENT_SPIKES:
                 kill_player();
@@ -704,6 +718,7 @@ void load_resources()
     key_texture                   = load_texture(res_key_png,                   res_key_png_len);
     spikes_texture                = load_texture(res_spikes_png,                res_spikes_png_len);
     flag_texture                  = load_texture(res_flag_png,                  res_flag_png_len);
+    fuel_texture                  = load_texture(res_fuel_png,                  res_fuel_png_len);
     none_texture                  = load_texture(res_none_png,                  res_none_png_len);
     player_texture_anim           = load_texture(res_player_png,                res_player_png_len);
     player_texture_anim_invert    = load_texture(res_player_invert_png,         res_player_invert_png_len);
@@ -717,6 +732,7 @@ void load_resources()
     door_open_sound               = load_sound(res_sfxr_door_open_wav,          res_sfxr_door_open_wav_len);
     win_sound                     = load_sound(res_sfxr_win_wav,                res_sfxr_win_wav_len);
     pickup_coin_sound             = load_sound(res_sfxr_pickup_coin_wav,        res_sfxr_pickup_coin_wav_len);
+    pickup_fuel_sound             = load_sound(res_sfxr_pickup_fuel_wav,        res_sfxr_pickup_fuel_wav_len);
     dead_sound                    = load_sound(res_sfxr_dead_wav,               res_sfxr_dead_wav_len);
 }
 
@@ -757,7 +773,7 @@ void setup_camera(Camera2D *cam)
 
 int main(void)
 {
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "jetpack jumper (github.com/simlx/raylib-platformer)");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Jetpack Jumper");
     InitAudioDevice();
 
     SetTargetFPS(60);
